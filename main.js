@@ -102,7 +102,7 @@ function registerIpcHandlers() {
     }
   });
 
-  // Handle vault file listing
+  // Handle vault file listing with metadata
   ipcMain.handle('vault:list-files', async () => {
     try {
       let vaultPath;
@@ -143,8 +143,33 @@ function registerIpcHandlers() {
       
       const files = fs.readdirSync(vaultPath);
       const mdFiles = files.filter(file => file.endsWith('.md'));
-      console.log('Found vault files:', mdFiles);
-      return mdFiles;
+      
+      // Get file stats for each file
+      const filesWithMetadata = mdFiles.map(file => {
+        try {
+          const filePath = path.join(vaultPath, file);
+          const stats = fs.statSync(filePath);
+          return {
+            filename: file,
+            displayName: file.replace('.md', '').replace(/-/g, ' '),
+            createdTime: stats.birthtime || stats.ctime, // Use birthtime if available, fallback to ctime
+            modifiedTime: stats.mtime,
+            size: stats.size
+          };
+        } catch (error) {
+          console.error(`Error getting stats for file ${file}:`, error);
+          return {
+            filename: file,
+            displayName: file.replace('.md', '').replace(/-/g, ' '),
+            createdTime: new Date(),
+            modifiedTime: new Date(),
+            size: 0
+          };
+        }
+      });
+      
+      console.log('Found vault files with metadata:', filesWithMetadata);
+      return filesWithMetadata;
     } catch (error) {
       console.error('Error listing vault files:', error);
       return [];

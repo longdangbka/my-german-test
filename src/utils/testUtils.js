@@ -40,20 +40,22 @@ export async function getAvailableTests(forceRefresh = false) {
     
     // Check if we're in an Electron environment
     if (window.electron && window.electron.listVaultFiles) {
-      // In Electron, use IPC to get files
+      // In Electron, use IPC to get files with metadata
       console.log('Getting vault files via Electron IPC...');
       try {
         const files = await window.electron.listVaultFiles();
         console.log('Vault files from IPC:', files);
         
         if (files && files.length > 0) {
-          for (const file of files) {
-            availableTests.push({
-              filename: file,
-              displayName: file.replace('.md', '').replace(/-/g, ' ')
-            });
-          }
-          console.log('Successfully loaded', availableTests.length, 'quiz files from Electron');
+          // Files now come with metadata from Electron
+          availableTests = files.map(file => ({
+            filename: file.filename,
+            displayName: file.displayName || file.filename.replace('.md', '').replace(/-/g, ' '),
+            createdTime: new Date(file.createdTime),
+            modifiedTime: new Date(file.modifiedTime),
+            size: file.size
+          }));
+          console.log('Successfully loaded', availableTests.length, 'quiz files from Electron with metadata');
           return availableTests;
         } else {
           console.warn('No vault files found via IPC');
@@ -82,7 +84,10 @@ export async function getAvailableTests(forceRefresh = false) {
             if (res.ok) {
               availableTests.push({
                 filename: file,
-                displayName: file
+                displayName: file.replace('.md', '').replace(/-/g, ' '),
+                createdTime: new Date(), // Default for web fallback
+                modifiedTime: new Date(),
+                size: 0
               });
             } else {
               console.log(`File ${file} listed in manifest but not accessible`);
@@ -106,6 +111,39 @@ export async function getAvailableTests(forceRefresh = false) {
     console.error('Error getting available tests:', error);
     return [];
   }
+}
+
+// Utility function to sort tests
+export function sortTests(tests, sortBy = 'name', order = 'asc') {
+  if (!tests || tests.length === 0) return tests;
+  
+  const sorted = [...tests].sort((a, b) => {
+    let compareValue = 0;
+    
+    switch (sortBy) {
+      case 'name':
+        compareValue = a.displayName.localeCompare(b.displayName);
+        break;
+      case 'filename':
+        compareValue = a.filename.localeCompare(b.filename);
+        break;
+      case 'created':
+        compareValue = new Date(a.createdTime) - new Date(b.createdTime);
+        break;
+      case 'modified':
+        compareValue = new Date(a.modifiedTime) - new Date(b.modifiedTime);
+        break;
+      case 'size':
+        compareValue = a.size - b.size;
+        break;
+      default:
+        compareValue = a.displayName.localeCompare(b.displayName);
+    }
+    
+    return order === 'desc' ? -compareValue : compareValue;
+  });
+  
+  return sorted;
 }
 
 export async function loadTestFile(filename) {
