@@ -1,0 +1,11 @@
+.question-block {
+  border: 2px solid #cbd5e1;
+  border-radius: 0.5rem;
+  background: #f8fafc;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.dark .question-block {
+  border-color: #334155;
+  background: #1e293b;
+}

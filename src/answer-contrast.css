@@ -1,0 +1,134 @@
+/* Light mode styles */
+.answer-input {
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 2px solid #6b7280;
+  transition: all 0.2s ease-in-out;
+}
+
+.answer-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Dark mode styles with better contrast */
+.dark .answer-input {
+  background-color: #111827;
+  color: #f9fafb;
+  border: 2px solid #d1d5db;
+}
+
+.dark .answer-input:focus {
+  border-color: #60a5fa;
+  box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.2);
+}
+
+/* Explanation styling */
+.explanation {
+  transition: all 0.2s ease-in-out;
+}
+
+.dark .explanation {
+  color: #e5e7eb;
+}
+
+/* Question block styling */
+.question-block {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Better contrast for feedback colors in dark mode */
+.dark .text-green-600 {
+  color: #34d399 !important;
+}
+
+.dark .text-red-600 {
+  color: #f87171 !important;
+}
+
+.dark .text-gray-600 {
+  color: #d1d5db !important;
+}
+
+/* Code block styling for dark mode */
+.dark pre {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+  border: 1px solid #374151 !important;
+}
+
+/* Table styling for dark mode */
+.dark table {
+  background-color: #1f2937 !important;
+  color: #f9fafb !important;
+}
+
+.dark table th {
+  background-color: #374151 !important;
+  color: #f9fafb !important;
+  border-color: #6b7280 !important;
+}
+
+.dark table td {
+  border-color: #6b7280 !important;
+  color: #f9fafb !important;
+}
+
+.dark table tbody tr:hover {
+  background-color: #374151 !important;
+}
+
+/* Better table responsive styling */
+table {
+  font-feature-settings: "tnum";
+  font-variant-numeric: tabular-nums;
+}
+
+/* KaTeX dark mode styling */
+.dark .katex {
+  color: #f9fafb !important;
+}
+
+.dark .katex .base {
+  color: #f9fafb !important;
+}
+
+.dark .katex .mord,
+.dark .katex .mrel,
+.dark .katex .mop,
+.dark .katex .mbin,
+.dark .katex .mpunct,
+.dark .katex .mopen,
+.dark .katex .mclose {
+  color: #f9fafb !important;
+}
+
+/* Upload button styling */
+.dark .btn {
+  background-color: #374151;
+  color: #f9fafb;
+  border: 1px solid #6b7280;
+}
+
+.dark .btn:hover {
+  background-color: #4b5563;
+}
+
+/* File input styling for dark mode */
+.dark input[type="file"] {
+  color: #f9fafb;
+}
+
+.dark input[type="file"]::-webkit-file-upload-button {
+  background-color: #374151;
+  color: #f9fafb;
+  border: 1px solid #6b7280;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.dark input[type="file"]::-webkit-file-upload-button:hover {
+  background-color: #4b5563;
+}
