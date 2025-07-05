@@ -1,6 +1,6 @@
 import React from 'react';
 import '../answer-contrast.css';
-import { getVaultPath } from '../utils/testUtils';
+import VaultImage from '../components/VaultImage.jsx';
 import CodeBlock from './CodeBlock';
 import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
@@ -35,8 +35,8 @@ function renderOrderedElements(elements) {
         case 'image':
           return (
             <div key={key} className="my-2">
-              <img
-                src={`${getVaultPath()}${element.content || ''}`}
+              <VaultImage
+                src={element.content || ''}
                 alt="content visual"
                 style={{ maxWidth: '100%', margin: '8px 0' }}
               />
@@ -151,9 +151,9 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
           {q.images && q.images.length > 0 && (
             <div className="my-2">
               {q.images.map((img, idx) => (
-                <img
+                <VaultImage
                   key={idx}
-                  src={`${getVaultPath()}${img}`}
+                  src={img}
                   alt="question visual"
                   style={{ maxWidth: '100%', margin: '8px 0' }}
                 />
@@ -189,9 +189,9 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
               {q.explanationImages && q.explanationImages.length > 0 && (
                 <div className="my-2">
                   {q.explanationImages.map((img, idx) => (
-                    <img
+                    <VaultImage
                       key={idx}
-                      src={`${getVaultPath()}${img}`}
+                      src={img}
                       alt="explanation visual"
                       style={{ maxWidth: '100%', margin: '8px 0' }}
                     />

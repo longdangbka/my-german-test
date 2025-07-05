@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('electron', {
   
   // Vault file access
   readVaultFile: (filename) => ipcRenderer.invoke('vault:read-file', filename),
+  readVaultImage: (filename) => ipcRenderer.invoke('vault:read-image', filename),
   listVaultFiles: () => ipcRenderer.invoke('vault:list-files'),
   
   // Platform information

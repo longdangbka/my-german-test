@@ -9,6 +9,31 @@ export function getVaultPath() {
   return '/vault/';
 }
 
+// Utility function to get image source URL for the current environment
+export async function getVaultImageSrc(imageName) {
+  if (!imageName) return null;
+  
+  console.log('getVaultImageSrc: Loading image:', imageName);
+  console.log('getVaultImageSrc: Electron environment:', !!window.electron);
+  
+  if (window.electron && window.electron.readVaultImage) {
+    // In Electron, use IPC to get base64 data URL
+    try {
+      console.log('getVaultImageSrc: Using IPC to load image');
+      const dataUrl = await window.electron.readVaultImage(imageName);
+      console.log('getVaultImageSrc: IPC result:', dataUrl ? 'SUCCESS' : 'FAILED');
+      return dataUrl;
+    } catch (error) {
+      console.error('getVaultImageSrc: Error loading image via IPC:', error);
+      return null;
+    }
+  } else {
+    console.log('getVaultImageSrc: Using HTTP fallback');
+    // In browser, use regular HTTP path
+    return `/vault/${imageName}`;
+  }
+}
+
 export async function getAvailableTests(forceRefresh = false) {
   try {
     let availableTests = [];

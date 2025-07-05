@@ -1,6 +1,6 @@
 import React from 'react';
 import '../answer-contrast.css';
-import { getVaultPath } from '../utils/testUtils';
+import VaultImage from '../components/VaultImage.jsx';
 import CodeBlock from './CodeBlock';
 import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
@@ -113,8 +113,8 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
         case 'image':
           return (
             <div key={key} className="my-2">
-              <img
-                src={`${getVaultPath()}${element.content || ''}`}
+              <VaultImage
+                src={element.content || ''}
                 alt="content visual"
                 style={{ maxWidth: '100%', margin: '8px 0' }}
               />
@@ -195,8 +195,8 @@ function renderOrderedElements(elements) {
         case 'image':
           return (
             <div key={key} className="my-2">
-              <img
-                src={`${getVaultPath()}${element.content || ''}`}
+              <VaultImage
+                src={element.content || ''}
                 alt="content visual"
                 style={{ maxWidth: '100%', margin: '8px 0' }}
               />

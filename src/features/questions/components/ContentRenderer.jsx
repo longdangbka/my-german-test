@@ -5,6 +5,7 @@
 import React from 'react';
 import { LatexRenderer, CodeRenderer } from '../../../shared/components/index.js';
 import TableRenderer from './TableRenderer.jsx';
+import VaultImage from '../../../components/VaultImage.jsx';
 import { PATHS } from '../../../shared/constants/index.js';
 
 /**
@@ -44,8 +45,8 @@ export function ContentRenderer({
             case 'image':
               return (
                 <div key={key} className="image-content my-3">
-                  <img
-                    src={`${PATHS.VAULT}/${element.content || ''}`}
+                  <VaultImage
+                    src={element.content || ''}
                     alt="Content visual"
                     className="max-w-full h-auto rounded-lg shadow-sm"
                     loading="lazy"

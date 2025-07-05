@@ -11,23 +11,8 @@ if (isDev) {
   });
 }
 
-function createWindow() {
-  const win = new BrowserWindow({
-    width: 1200,
-    height: 900,
-    minWidth: 800,
-    minHeight: 600,
-    icon: path.join(__dirname, 'public', 'favicon.ico'), // Windows icon
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.js')
-    },
-    show: false, // Don't show until ready
-    titleBarStyle: 'default'
-  });
-
+// Register IPC handlers once when app is ready
+function registerIpcHandlers() {
   // Handle dark mode
   ipcMain.handle('dark-mode:toggle', () => {
     if (nativeTheme.shouldUseDarkColors) {
@@ -69,6 +54,55 @@ function createWindow() {
     }
   });
 
+  // Handle vault image requests - return as base64 data URL
+  ipcMain.handle('vault:read-image', async (event, filename) => {
+    try {
+      let vaultPath;
+      if (isDev) {
+        vaultPath = path.join(__dirname, 'public', 'vault');
+      } else {
+        vaultPath = path.join(process.resourcesPath, 'vault');
+      }
+      
+      const filePath = path.join(vaultPath, filename);
+      console.log('Reading vault image:', filePath);
+      
+      if (!fs.existsSync(filePath)) {
+        console.error(`Image not found: ${filename} at ${filePath}`);
+        return null;
+      }
+      
+      const imageBuffer = fs.readFileSync(filePath);
+      const ext = path.extname(filename).toLowerCase();
+      let mimeType = 'image/jpeg'; // default
+      
+      switch (ext) {
+        case '.png':
+          mimeType = 'image/png';
+          break;
+        case '.gif':
+          mimeType = 'image/gif';
+          break;
+        case '.webp':
+          mimeType = 'image/webp';
+          break;
+        case '.jpg':
+        case '.jpeg':
+          mimeType = 'image/jpeg';
+          break;
+      }
+      
+      const base64 = imageBuffer.toString('base64');
+      const dataUrl = `data:${mimeType};base64,${base64}`;
+      console.log(`Successfully read image ${filename}, size: ${imageBuffer.length} bytes`);
+      return dataUrl;
+    } catch (error) {
+      console.error('Error reading vault image:', error);
+      return null;
+    }
+  });
+
+  // Handle vault file listing
   ipcMain.handle('vault:list-files', async () => {
     try {
       let vaultPath;
@@ -115,6 +149,24 @@ function createWindow() {
       console.error('Error listing vault files:', error);
       return [];
     }
+  });
+}
+
+function createWindow() {
+  const win = new BrowserWindow({
+    width: 1200,
+    height: 900,
+    minWidth: 800,
+    minHeight: 600,
+    icon: path.join(__dirname, 'public', 'favicon.ico'), // Windows icon
+    webPreferences: {
+      nodeIntegration: false,
+      contextIsolation: true,
+      enableRemoteModule: false,
+      preload: path.join(__dirname, 'preload.js')
+    },
+    show: false, // Don't show until ready
+    titleBarStyle: 'default'
   });
 
   // Load the React app
@@ -203,6 +255,7 @@ function createMenu() {
 
 // App event handlers
 app.whenReady().then(() => {
+  registerIpcHandlers();
   createWindow();
 });
 
