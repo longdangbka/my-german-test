@@ -1,5 +1,5 @@
 import React from 'react';
-import { questionTypes } from '../questionTypes';
+import { questionTypes } from '../types';
 
 export default function QuestionList({ questions, answers, feedback, onChange, showFeedback, seqStart = 1, quizName }) {
   let seq = seqStart;

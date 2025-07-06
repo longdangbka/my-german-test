@@ -4,7 +4,7 @@
 
 import { extractContentElements } from '../utils/contentExtractor.js';
 import { PATTERNS, QUESTION_TYPES, PATHS, parseClozeMarkers } from '../../../shared/constants/index.js';
-import { getVaultPath } from '../../../utils/testUtils';
+import { getVaultPath } from '../../../shared/utils/testUtils';
 import { extractMatches, normalizeText } from '../../../shared/utils/index.js';
 
 /**

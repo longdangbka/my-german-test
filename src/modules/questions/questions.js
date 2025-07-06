@@ -1,7 +1,7 @@
 // questions.js
 // Dynamically load and parse all standard question files from public/vault
 
-import { parseClozeMarkers } from './shared/constants/index.js';
+import { parseClozeMarkers } from '../../shared/constants/index.js';
 
 export async function loadQuestionGroups(signal, filename = 'Question-Sample.md') {
   console.log('🔍 loadQuestionGroups - Starting with filename:', filename);

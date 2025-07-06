@@ -4,6 +4,8 @@
 
 export { default as textUtils } from './textUtils.js';
 export { default as validationUtils } from './validationUtils.js';
+export { renderSimpleLatex } from './simpleLatexRenderer';
+export { getVaultPath } from './testUtils';
 
 // Re-export commonly used functions for convenience
 export {

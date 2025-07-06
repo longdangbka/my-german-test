@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { audioSources, setAudioSource } from '../audios';
-import '../audio-contrast.css';
+import { audioSources, setAudioSource } from './audios';
+import '../../assets/styles/audio-contrast.css';
 
 export default function AudioPlayer({ group }) {
   const [src, setSrc] = useState(audioSources[group.title] || '');

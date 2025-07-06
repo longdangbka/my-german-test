@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import useQuestionData from './hooks/useQuestionData';
-import AudioPlayer from './components/AudioPlayer';
-import QuestionList from './components/QuestionList';
-import TestControls from './components/TestControls';
-import Navigation from './components/Navigation';
-import TestSelector from './components/TestSelector';
-import { renderSimpleLatex } from './utils/simpleLatexRenderer';
-import './styles/inline-latex.css';
+import useQuestionData from '../shared/hooks/useQuestionData';
+import AudioPlayer from '../modules/audio/AudioPlayer';
+import QuestionList from '../modules/questions/components/QuestionList';
+import TestControls from '../modules/testing/components/TestControls';
+import Navigation from '../modules/navigation/Navigation';
+import TestSelector from '../modules/testing/components/TestSelector';
+import { renderSimpleLatex } from '../shared/utils/simpleLatexRenderer';
+import '../assets/styles/inline-latex.css';
 
 function App() {
   const [selectedTest, setSelectedTest] = useState(null);

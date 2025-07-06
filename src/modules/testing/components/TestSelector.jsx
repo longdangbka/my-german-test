@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getAvailableTests, sortTests } from '../utils/testUtils';
+import { getAvailableTests, sortTests } from '../../../shared/utils/testUtils';
 
 const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
   const [availableTests, setAvailableTests] = useState([]);

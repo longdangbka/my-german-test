@@ -1,10 +1,10 @@
 import React from 'react';
-import '../answer-contrast.css';
-import VaultImage from '../components/VaultImage.jsx';
-import BookmarkButton from '../components/BookmarkButton.jsx';
-import CodeBlock from './CodeBlock';
-import TableWithLatex from './TableWithLatex';
-import { renderSimpleLatex } from '../utils/simpleLatexRenderer';
+import '../../../assets/styles/answer-contrast.css';
+import VaultImage from '../../../shared/components/VaultImage.jsx';
+import BookmarkButton from '../../bookmarks/BookmarkButton.jsx';
+import CodeBlock from '../components/CodeBlock';
+import TableWithLatex from '../components/TableWithLatex';
+import { renderSimpleLatex } from '../../../shared/utils/simpleLatexRenderer';
 
 export function initAnswers(q) {
   const out = {};

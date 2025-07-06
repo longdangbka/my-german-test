@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { loadQuestionGroups } from '../questions';
-import { questionTypes } from '../questionTypes';
+import { loadQuestionGroups } from '../../modules/questions/questions';
+import { questionTypes } from '../../modules/questions/types';
 
 export default function useQuestionData(selectedTestFile = null) {
   const [groups, setGroups] = useState([]);
