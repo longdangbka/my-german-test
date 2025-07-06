@@ -353,8 +353,17 @@ function createWindow() {
 
   // Load the React app
   if (isDev) {
-    win.loadURL('http://localhost:3002');
+    // Add cache busting for development
+    const cacheBuster = Date.now();
+    win.loadURL(`http://localhost:3002?t=${cacheBuster}`);
     win.webContents.openDevTools();
+    
+    // Add keyboard shortcut for reload in development
+    win.webContents.on('before-input-event', (event, input) => {
+      if (input.control && input.key.toLowerCase() === 'r') {
+        win.reload();
+      }
+    });
   } else {
     win.loadFile(path.join(__dirname, 'build', 'index.html'));
   }
@@ -375,6 +384,16 @@ function createMenu() {
     {
       label: 'File',
       submenu: [
+        {
+          label: 'Reload',
+          accelerator: 'Ctrl+R',
+          click: (item, focusedWindow) => {
+            if (focusedWindow) {
+              focusedWindow.reload();
+            }
+          }
+        },
+        { type: 'separator' },
         {
           label: 'Exit',
           accelerator: 'Ctrl+Q',

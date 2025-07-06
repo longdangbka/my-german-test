@@ -392,7 +392,7 @@ function parseStandardMarkdown(md) {
             text:        'AUDIO:',
           };
         }
-        const typeM = code.match(/^TYPE:\s*(CLOZE|T-F)$/im);
+        const typeM = code.match(/^TYPE:\s*(CLOZE|T-F|Short)$/im);
         const type  = typeM ? typeM[1].toUpperCase() : null;
         
         console.log('🔍 QUESTION PARSE - Raw code:', code);
@@ -583,6 +583,25 @@ function parseStandardMarkdown(md) {
         return {
           id:          `g${num}_q${idx+1}`,
           type:        'T-F',
+          text:        qT,
+          answer:      aT,
+          explanation: eT,
+          images,
+          codeBlocks,
+          latexBlocks,
+          htmlTables,
+          orderedElements: questionOrderedElements,
+          explanationImages,
+          explanationCodeBlocks,
+          explanationLatexBlocks,
+          explanationHtmlTables,
+          explanationOrderedElements,
+        };
+      }
+      else if (type === 'SHORT') {
+        return {
+          id:          `g${num}_q${idx+1}`,
+          type:        'SHORT',
           text:        qT,
           answer:      aT,
           explanation: eT,

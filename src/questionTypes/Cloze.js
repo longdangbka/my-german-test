@@ -3,8 +3,8 @@ import '../answer-contrast.css';
 import VaultImage from '../components/VaultImage.jsx';
 import BookmarkButton from '../components/BookmarkButton.jsx';
 import CodeBlock from './CodeBlock';
-import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
+import { renderSimpleLatex } from '../utils/simpleLatexRenderer';
 
 export function initAnswers(q) {
   const out = {};
@@ -135,70 +135,150 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
 function renderOrderedElementsWithCloze(elements, question, value, onChange, showFeedback, feedback) {
   if (!elements || elements.length === 0) return null;
   
-  let blankIndex = 0; // Track current blank index across all text elements
+  const result = [];
+  let currentInlineGroup = [];
+  let globalBlankIndex = 0; // Track current blank index across all text elements
   
-  return elements.map((element, index) => {
-    const key = `element-${index}`;
-    
+  // Helper function to flush the current inline group with cloze handling
+  const flushInlineGroup = () => {
+    if (currentInlineGroup.length > 0) {
+      // Combine all text content in the group and render as one unit with cloze handling
+      const combinedTextParts = [];
+      let currentBlankIndex = globalBlankIndex;
+      
+      currentInlineGroup.forEach((el, index) => {
+        const content = el.type === 'text' ? el.content || '' : '';
+        
+        // Add space before element if needed (same logic as other question types)
+        let processedContent = content;
+        if (index > 0 && content.trim()) {
+          const prevElement = currentInlineGroup[index - 1];
+          const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
+          
+          if (prevContent.trim() && 
+              !prevContent.match(/\s$/) && 
+              !content.match(/^[\s.,;:!?]/) &&
+              !prevContent.match(/[-=]$/) &&
+              !content.match(/^[-=]/)) {
+            processedContent = ' ' + content;
+          }
+        }
+        
+        combinedTextParts.push(processedContent);
+      });
+      
+      const combinedText = combinedTextParts.join('');
+      
+      if (combinedText.trim()) {
+        // Handle text with cloze markers
+        const parts = combinedText.split('_____');
+        
+        result.push(
+          <div
+            key={`inline-group-${result.length}`}
+            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
+            className="my-2 text-content"
+          >
+            {parts.map((seg, i) => (
+              <React.Fragment key={`group-${result.length}-part-${i}`}>
+                {renderSimpleLatex(seg)}
+                {i < parts.length - 1 && currentBlankIndex < question.blanks.length && (
+                  <>
+                    {showFeedback ? (
+                      // When showing feedback, display user input (if any) and expected answer
+                      <span className="inline-flex items-center gap-2 mx-2">
+                        {/* Show what the user typed (if anything) with colored background */}
+                        {value[`${question.id}_${currentBlankIndex + 1}`] ? (
+                          <>
+                            <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                              feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
+                                ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                                : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                            }`}>
+                              {renderSimpleLatex(value[`${question.id}_${currentBlankIndex + 1}`])}
+                            </span>
+                            {/* Show correct/incorrect symbol */}
+                            <span className={
+                              feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
+                                ? 'text-green-500 dark:text-green-400'
+                                : 'text-red-500 dark:text-red-400'
+                            }>
+                              {feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct' ? '✅' : '❌'}
+                            </span>
+                          </>
+                        ) : (
+                          // If user left blank, show a placeholder and a cross
+                          <>
+                            <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                              (blank)
+                            </span>
+                            <span className="text-red-500 dark:text-red-400">❌</span>
+                          </>
+                        )}
+                        {/* Show expected answer in gray background */}
+                        <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                          {renderSimpleLatex(question.blanks[currentBlankIndex] || '')}
+                        </span>
+                      </span>
+                    ) : (
+                      // When not showing feedback, display the input field
+                      <input
+                        key={`${question.id}_${currentBlankIndex}_group_${i}`}
+                        name={`${question.id}_${currentBlankIndex + 1}`}
+                        value={value[`${question.id}_${currentBlankIndex + 1}`] || ''}
+                        onChange={onChange}
+                        autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck="false"
+                        className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                        data-blank-index={currentBlankIndex}
+                      />
+                    )}
+                    {(() => { currentBlankIndex++; return null; })()}
+                  </>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        );
+        
+        // Update global blank index
+        globalBlankIndex = currentBlankIndex;
+      }
+      currentInlineGroup = [];
+    }
+  };
+  
+  elements.forEach((element, index) => {
     try {
       switch (element.type) {
         case 'text':
-          // Handle text with cloze markers
-          const textContent = element.content || '';
-          const parts = textContent.split('_____');
-          
-          return (
-            <div
-              key={key}
-              style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
-              className="my-2"
-            >
-              {parts.map((seg, i) => (
-                <React.Fragment key={`${key}-part-${i}`}>
-                  {renderWithInlineLatex(seg)}
-                  {i < parts.length - 1 && blankIndex < question.blanks.length && (
-                    <>
-                      {showFeedback ? (
-                        // When showing feedback, display only the answer with check/cross symbol
-                        <span className="inline-flex items-center gap-2 mx-2">
-                          {/* Show correct/incorrect symbol */}
-                          <span className={
-                            feedback[`${question.id}_${blankIndex + 1}`] === 'correct'
-                              ? 'text-green-500 dark:text-green-400'
-                              : 'text-red-500 dark:text-red-400'
-                          }>
-                            {feedback[`${question.id}_${blankIndex + 1}`] === 'correct' ? '✅' : '❌'}
-                          </span>
-                          {/* Show correct answer in a styled box */}
-                          <span className="inline-block px-3 py-1 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded text-sm font-medium">
-                            {renderWithInlineLatex(question.blanks[blankIndex] || '')}
-                          </span>
-                        </span>
-                      ) : (
-                        // When not showing feedback, display the input field
-                        <input
-                          key={`${question.id}_${blankIndex}_text_${i}`}
-                          name={`${question.id}_${blankIndex + 1}`}
-                          value={value[`${question.id}_${blankIndex + 1}`] || ''}
-                          onChange={onChange}
-                          autoComplete="off"
-                          autoCorrect="off"
-                          spellCheck="false"
-                          className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                          data-blank-index={blankIndex}
-                        />
-                      )}
-                      {(() => { blankIndex++; return null; })()}
-                    </>
-                  )}
-                </React.Fragment>
-              ))}
-            </div>
-          );
+          // Add text elements to the current inline group
+          currentInlineGroup.push(element);
+          break;
+        
+        case 'latex':
+          if (element.content?.latexType === 'inline') {
+            // Treat inline LaTeX as part of the text flow
+            currentInlineGroup.push({
+              type: 'text',
+              content: `$${element.content?.latex || ''}$`
+            });
+          } else {
+            // Display math breaks the inline group
+            flushInlineGroup();
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(`$$${element.content?.latex || ''}$$`)}
+              </div>
+            );
+          }
+          break;
         
         case 'image':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <VaultImage
                 src={element.content || ''}
                 alt="content visual"
@@ -206,20 +286,24 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
               />
             </div>
           );
+          break;
         
         case 'codeBlock':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <CodeBlock 
                 code={element.content?.code || ''} 
                 lang={element.content?.lang || ''} 
               />
             </div>
           );
+          break;
         
         case 'table':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <TableWithLatex 
                 htmlTable={element.content || ''} 
                 question={question}
@@ -230,57 +314,110 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
               />
             </div>
           );
-        
-        case 'latex':
-          return (
-            <div key={key} className="my-2">
-              <LatexBlock 
-                latex={element.content?.latex || ''} 
-                type={element.content?.latexType || 'inline'} 
-              />
-            </div>
-          );
+          break;
         
         case 'latexPlaceholder':
           // For cloze questions, latexPlaceholders should have been converted to latex elements
           // If we still see them here, it indicates a parsing issue
           console.warn('Found unprocessed latexPlaceholder in renderOrderedElementsWithCloze:', element.content);
-          return null;
+          break;
         
         default:
           console.warn('Unknown element type:', element.type);
-          return null;
+          break;
       }
     } catch (error) {
       console.error('Error rendering element:', element, error);
-      return null;
     }
-  }).filter(Boolean);
+  });
+  
+  // Flush any remaining inline group
+  flushInlineGroup();
+  
+  return result;
 }
 
 // Function to render elements in their original order
+// Function to render elements in their original order with proper inline grouping
 function renderOrderedElements(elements) {
   if (!elements || elements.length === 0) return null;
   
-  return elements.map((element, index) => {
-    const key = `element-${index}`;
-    
+  const result = [];
+  let currentInlineGroup = [];
+  
+  // Helper function to flush the current inline group
+  const flushInlineGroup = () => {
+    if (currentInlineGroup.length > 0) {
+      // Combine all text content in the group and render as one unit
+      // Preserve spacing between elements by checking if they need separators
+      const combinedText = currentInlineGroup
+        .map((el, index) => {
+          const content = el.type === 'text' ? el.content || '' : '';
+          // Add space before element if:
+          // 1. It's not the first element
+          // 2. The previous element doesn't end with whitespace
+          // 3. This element doesn't start with whitespace or punctuation
+          if (index > 0 && content.trim()) {
+            const prevElement = currentInlineGroup[index - 1];
+            const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
+            
+            if (prevContent.trim() && 
+                !prevContent.match(/\s$/) && 
+                !content.match(/^[\s.,;:!?]/) &&
+                !prevContent.match(/[-=]$/) &&
+                !content.match(/^[-=]/)) {
+              return ' ' + content;
+            }
+          }
+          return content;
+        })
+        .join('');
+      
+      if (combinedText.trim()) {
+        result.push(
+          <div
+            key={`inline-group-${result.length}`}
+            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
+            className="my-2 text-content"
+          >
+            {renderSimpleLatex(combinedText)}
+          </div>
+        );
+      }
+      currentInlineGroup = [];
+    }
+  };
+  
+  elements.forEach((element, index) => {
     try {
       switch (element.type) {
         case 'text':
-          return (
-            <div
-              key={key}
-              style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
-              className="my-2"
-            >
-              {renderWithInlineLatex(element.content || '')}
-            </div>
-          );
+          // Add text elements to the current inline group
+          currentInlineGroup.push(element);
+          break;
+        
+        case 'latex':
+          if (element.content?.latexType === 'inline') {
+            // Treat inline LaTeX as part of the text flow
+            currentInlineGroup.push({
+              type: 'text',
+              content: `$${element.content?.latex || ''}$`
+            });
+          } else {
+            // Display math breaks the inline group
+            flushInlineGroup();
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(`$$${element.content?.latex || ''}$$`)}
+              </div>
+            );
+          }
+          break;
         
         case 'image':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <VaultImage
                 src={element.content || ''}
                 alt="content visual"
@@ -288,84 +425,45 @@ function renderOrderedElements(elements) {
               />
             </div>
           );
+          break;
         
         case 'codeBlock':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <CodeBlock 
                 code={element.content?.code || ''} 
                 lang={element.content?.lang || ''} 
               />
             </div>
           );
+          break;
         
         case 'table':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <TableWithLatex htmlTable={element.content || ''} />
             </div>
           );
-        
-        case 'latex':
-          return (
-            <div key={key} className="my-2">
-              <LatexBlock 
-                latex={element.content?.latex || ''} 
-                type={element.content?.latexType || 'inline'} 
-              />
-            </div>
-          );
+          break;
         
         case 'latexPlaceholder':
           // LaTeX placeholders should be processed by the text rendering or converted to latex elements
           console.warn('Found unprocessed latexPlaceholder in renderOrderedElements:', element.content);
-          return null;
+          break;
         
         default:
           console.warn('Unknown element type:', element.type);
-          return null;
+          break;
       }
     } catch (error) {
       console.error('Error rendering element:', element, error);
-      return null;
     }
-  }).filter(Boolean);
-}
-
-// Utility to render both $$…$$ display and $…$ inline LaTeX
-function renderWithInlineLatex(text) {
-  const parts = [];
-  let lastIndex = 0;
-  // match either $$…$$ or $…$ or HTML table
-  const regex = /(\$\$[\s\S]+?\$\$)|\$(.+?)\$|(<table[\s\S]+?<\/table>)/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    // push plain text before this match
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const raw = match[0];
-    if (raw.startsWith('<table')) {
-      // If it's a table, render it as HTML
-      parts.push(<span key={match.index} dangerouslySetInnerHTML={{ __html: raw }} />);
-    } else if (raw.startsWith('$$')) {
-      // strip the $$ delimiters for display math
-      const displayContent = raw.slice(2, -2);
-      parts.push(
-        <LatexBlock key={match.index} latex={displayContent} type="display" />
-      );
-    } else if (raw.startsWith('$')) {
-      // strip the $ delimiters for inline math
-      const inlineContent = raw.slice(1, -1);
-      parts.push(
-        <LatexBlock key={match.index} latex={inlineContent} type="inline" />
-      );
-    }
-    lastIndex = regex.lastIndex;
-  }
-  // push any remaining trailing text
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-  return parts;
+  });
+  
+  // Flush any remaining inline group
+  flushInlineGroup();
+  
+  return result;
 }

@@ -124,8 +124,11 @@ E: "Die Führung ist auf Deutsch und Englisch."
 --- start-question
 TYPE: CLOZE
 
-Q: 
-{{c::Machen}} Sie bitte während der Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
+Q:
+
+We have $x=5$ here. 
+
+{{c::Machen $x=5$}} Sie bitte während der Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
 U Sie bitte während Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
 
 | {{c::a}}   | b   |

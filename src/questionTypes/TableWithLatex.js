@@ -168,37 +168,59 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
         const inputValue = value[fieldName] || '';
           const feedbackKey = fieldName;
           const isCorrect = showFeedback && feedback[feedbackKey] === 'correct';
-          const isIncorrect = showFeedback && feedback[feedbackKey] === 'incorrect';
           
           // Create a unique key that includes question id, blank index, and marker content
           // This prevents React from reusing cached input components
           const uniqueKey = `${question.id}_blank_${blankIndex}_${markerContent}_table`;
           
           parts.push(
-            <span key={`${fieldName}-container-${i}`} style={{ display: 'inline-flex', alignItems: 'center' }}>
-              <input
-                key={uniqueKey}
-                name={fieldName}
-                type="text"
-                value={inputValue}
-                onChange={onChange}
-                autoComplete="off"
-                autoCorrect="off"
-                spellCheck="false"
-                className={`answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 ${
-                  isCorrect 
-                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20' 
-                    : isIncorrect 
-                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                    : ''
-                }`}
-                data-blank-index={blankIndex}
-                data-marker-content={markerContent}
-              />
-              {showFeedback && (isCorrect || isIncorrect) && (
-                <span className="ml-1 text-xs">
-                  {isCorrect ? '✅' : '❌'}
-                </span>
+            <span key={`${fieldName}-container-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              {showFeedback ? (
+                // When showing feedback, display user input (if any) and expected answer
+                <>
+                  {/* Show what the user typed (if anything) with colored background */}
+                  {inputValue ? (
+                    <>
+                      <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                        isCorrect
+                          ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                          : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                      }`}>
+                        {inputValue}
+                      </span>
+                      {/* Show correct/incorrect symbol */}
+                      <span className={isCorrect ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                        {isCorrect ? '✅' : '❌'}
+                      </span>
+                    </>
+                  ) : (
+                    // If user left blank, show a placeholder and a cross
+                    <>
+                      <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                        (blank)
+                      </span>
+                      <span className="text-red-500 dark:text-red-400">❌</span>
+                    </>
+                  )}
+                  {/* Show expected answer in gray background */}
+                  <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                    {markerContent}
+                  </span>
+                </>
+              ) : (
+                <input
+                  key={uniqueKey}
+                  name={fieldName}
+                  type="text"
+                  value={inputValue}
+                  onChange={onChange}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  data-blank-index={blankIndex}
+                  data-marker-content={markerContent}
+                />
               )}
             </span>
           );

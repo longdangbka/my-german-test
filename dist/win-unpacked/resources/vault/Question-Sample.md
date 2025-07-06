@@ -3,6 +3,24 @@
 ### Questions
 
 --- start-question
+TYPE: Short
+
+Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
+
+ANSWER: Einstein
+
+--- end-question
+
+--- start-question
+TYPE: TrueFalse
+
+Q: The equation $F = ma$ describes Newton's second law of motion. True or false?
+
+ANSWER: True
+
+--- end-question
+
+--- start-question
 TYPE: T-F
 
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$32156

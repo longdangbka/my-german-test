@@ -5,7 +5,8 @@ import QuestionList from './components/QuestionList';
 import TestControls from './components/TestControls';
 import Navigation from './components/Navigation';
 import TestSelector from './components/TestSelector';
-import TextWithLatex from './components/TextWithLatex';
+import { renderSimpleLatex } from './utils/simpleLatexRenderer';
+import './styles/inline-latex.css';
 
 function App() {
   const [selectedTest, setSelectedTest] = useState(null);
@@ -53,6 +54,7 @@ function App() {
   };
 
   const handleBackToTestSelection = () => {
+    console.log('🔍 Back button clicked');
     setSelectedTest(null);
     setShowFeedback({});
   };
@@ -101,24 +103,17 @@ function App() {
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
-  // Auto-fill and show answers
+  // Show answers without auto-filling
   const doTestForMe = () => {
-    qd.setAnswers(prev => {
-      const filled = { ...prev };
-      qd.currentGroup.questions.forEach(q => {
-        if (q.type === 'CLOZE') {
-          q.blanks.forEach((b, bi) => {
-            filled[`${q.id}_${bi+1}`] = b;
-          });
-        } else {
-          filled[q.id] = q.answer;
-        }
-      });
-      return filled;
-    });
-    setTimeout(() => {
-      checkAnswers();
-    }, 0);
+    console.log('🔍 doTestForMe clicked - checking answers');
+    // Just check the current answers without auto-filling
+    checkAnswers();
+  };
+
+  // Handle theme toggle
+  const handleThemeToggle = () => {
+    console.log('🔍 Theme toggle clicked, current theme:', theme);
+    toggleTheme();
   };
 
   // Only show feedback for the current section
@@ -139,10 +134,10 @@ function App() {
             Back to Quiz Selection
           </button>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            <TextWithLatex>{qd.currentGroup.title}</TextWithLatex>
+            {renderSimpleLatex(qd.currentGroup.title)}
           </h2>
           <button
-            onClick={toggleTheme}
+            onClick={handleThemeToggle}
             className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
           >

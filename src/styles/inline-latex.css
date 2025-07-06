@@ -1,0 +1,125 @@
+/* KaTeX LaTeX Rendering Styles */
+
+/* Base KaTeX styling - FORCE INLINE */
+.katex {
+  font-size: inherit !important;
+  line-height: inherit !important;
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+/* Force inline math to stay inline - AGGRESSIVE OVERRIDES */
+span.katex {
+  display: inline !important;
+  white-space: nowrap !important;
+  vertical-align: baseline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  float: none !important;
+  position: static !important;
+}
+
+/* Ensure all KaTeX elements stay inline */
+.katex .katex-html {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+.katex .base {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+.katex .mord, .katex .mbin, .katex .mrel, .katex .mopen, .katex .mclose {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+/* NEVER allow inline math to become block */
+.katex:not(.katex-display) {
+  display: inline !important;
+  text-align: inherit !important;
+  margin: 0 !important;
+}
+
+/* FORCE INLINE MATH INSIDE QUESTION CONTAINERS */
+.question-block .katex:not(.katex-display) {
+  display: inline !important;
+  vertical-align: baseline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.question-block span.katex {
+  display: inline !important;
+  white-space: nowrap !important;
+  vertical-align: baseline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Override any container styling that might affect LaTeX */
+.my-2 .katex:not(.katex-display) {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+.my-2 span.katex {
+  display: inline !important;
+  white-space: nowrap !important;
+}
+
+/* Target text content containers specifically */
+.text-content .katex:not(.katex-display) {
+  display: inline !important;
+  vertical-align: baseline !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.text-content span.katex {
+  display: inline !important;
+  white-space: nowrap !important;
+  vertical-align: baseline !important;
+}
+
+/* Make sure the LaTeX renderer span doesn't interfere */
+.text-content span[style*="whiteSpace"] .katex:not(.katex-display) {
+  display: inline !important;
+  vertical-align: baseline !important;
+}
+
+.text-content span[style*="whiteSpace"] span.katex {
+  display: inline !important;
+  white-space: nowrap !important;
+}
+
+/* Block math container styling */
+.block-math-container {
+  margin: 1rem 0 !important;
+  text-align: center !important;
+  clear: both;
+  display: block !important;
+}
+
+/* Block math display */
+.katex-display {
+  margin: 0 !important;
+  text-align: center !important;
+  display: block !important;
+}
+
+/* Ensure math elements don't break layout */
+.katex * {
+  box-sizing: border-box;
+}
+
+/* Error styling for failed LaTeX */
+.latex-error {
+  color: #dc3545 !important;
+  background-color: #f8d7da !important;
+  border: 1px solid #f5c6cb !important;
+  border-radius: 0.25rem !important;
+  padding: 0.25rem 0.5rem !important;
+  font-family: 'Courier New', monospace !important;
+}

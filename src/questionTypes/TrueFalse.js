@@ -3,8 +3,8 @@ import '../answer-contrast.css';
 import VaultImage from '../components/VaultImage.jsx';
 import BookmarkButton from '../components/BookmarkButton.jsx';
 import CodeBlock from './CodeBlock';
-import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
+import { renderSimpleLatex } from '../utils/simpleLatexRenderer';
 
 export function initAnswers(q) {
   return { [q.id]: '' };
@@ -13,29 +13,86 @@ export function initFeedback(q) {
   return { [q.id]: '' };
 }
 
-// Function to render elements in their original order
+// Function to render elements in their original order with proper inline grouping
 function renderOrderedElements(elements) {
   if (!elements || elements.length === 0) return null;
   
-  return elements.map((element, index) => {
-    const key = `element-${index}`;
-    
+  const result = [];
+  let currentInlineGroup = [];
+  
+  // Helper function to flush the current inline group
+  const flushInlineGroup = () => {
+    if (currentInlineGroup.length > 0) {
+      // Combine all text content in the group and render as one unit
+      // Preserve spacing between elements by checking if they need separators
+      const combinedText = currentInlineGroup
+        .map((el, index) => {
+          const content = el.type === 'text' ? el.content || '' : '';
+          // Add space before element if:
+          // 1. It's not the first element
+          // 2. The previous element doesn't end with whitespace
+          // 3. This element doesn't start with whitespace or punctuation
+          if (index > 0 && content.trim()) {
+            const prevElement = currentInlineGroup[index - 1];
+            const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
+            
+            if (prevContent.trim() && 
+                !prevContent.match(/\s$/) && 
+                !content.match(/^[\s.,;:!?]/) &&
+                !prevContent.match(/[-=]$/) &&
+                !content.match(/^[-=]/)) {
+              return ' ' + content;
+            }
+          }
+          return content;
+        })
+        .join('');
+      
+      if (combinedText.trim()) {
+        result.push(
+          <div
+            key={`inline-group-${result.length}`}
+            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
+            className="my-2 text-content"
+          >
+            {renderSimpleLatex(combinedText)}
+          </div>
+        );
+      }
+      currentInlineGroup = [];
+    }
+  };
+  
+  elements.forEach((element, index) => {
     try {
       switch (element.type) {
         case 'text':
-          return (
-            <div
-              key={key}
-              style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
-              className="my-2"
-            >
-              {renderWithInlineLatex(element.content || '')}
-            </div>
-          );
+          // Add text elements to the current inline group
+          currentInlineGroup.push(element);
+          break;
+        
+        case 'latex':
+          if (element.content?.latexType === 'inline') {
+            // Treat inline LaTeX as part of the text flow
+            currentInlineGroup.push({
+              type: 'text',
+              content: `$${element.content?.latex || ''}$`
+            });
+          } else {
+            // Display math breaks the inline group
+            flushInlineGroup();
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(`$$${element.content?.latex || ''}$$`)}
+              </div>
+            );
+          }
+          break;
         
         case 'image':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <VaultImage
                 src={element.content || ''}
                 alt="content visual"
@@ -43,81 +100,42 @@ function renderOrderedElements(elements) {
               />
             </div>
           );
+          break;
         
         case 'codeBlock':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <CodeBlock 
                 code={element.content?.code || ''} 
                 lang={element.content?.lang || ''} 
               />
             </div>
           );
+          break;
         
         case 'table':
-          return (
-            <div key={key} className="my-2">
+          flushInlineGroup();
+          result.push(
+            <div key={`element-${index}`} className="my-2">
               <TableWithLatex htmlTable={element.content || ''} />
             </div>
           );
-        
-        case 'latex':
-          return (
-            <div key={key} className="my-2">
-              <LatexBlock 
-                latex={element.content?.latex || ''} 
-                type={element.content?.latexType || 'inline'} 
-              />
-            </div>
-          );
+          break;
         
         default:
           console.warn('Unknown element type:', element.type);
-          return null;
+          break;
       }
     } catch (error) {
       console.error('Error rendering element:', element, error);
-      return null;
     }
-  }).filter(Boolean);
-}
-
-// Utility to render both $$…$$ display and $…$ inline LaTeX
-function renderWithInlineLatex(text) {
-  const parts = [];
-  let lastIndex = 0;
-  // match either $$…$$ or $…$ or HTML table
-  const regex = /(\$\$[\s\S]+?\$\$)|\$(.+?)\$|(<table[\s\S]+?<\/table>)/g;
-  let match;
-  while ((match = regex.exec(text)) !== null) {
-    // push plain text before this match
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const raw = match[0];
-    if (raw.startsWith('<table')) {
-      // If it's a table, render it as HTML
-      parts.push(<span key={match.index} dangerouslySetInnerHTML={{ __html: raw }} />);
-    } else if (raw.startsWith('$$')) {
-      // strip the $$ delimiters for display math
-      const displayContent = raw.slice(2, -2);
-      parts.push(
-        <LatexBlock key={match.index} latex={displayContent} type="display" />
-      );
-    } else if (raw.startsWith('$')) {
-      // strip the $ delimiters for inline math
-      const inlineContent = raw.slice(1, -1);
-      parts.push(
-        <LatexBlock key={match.index} latex={inlineContent} type="inline" />
-      );
-    }
-    lastIndex = regex.lastIndex;
-  }
-  // push any remaining trailing text
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-  return parts;
+  });
+  
+  // Flush any remaining inline group
+  flushInlineGroup();
+  
+  return result;
 }
 
 export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
@@ -130,7 +148,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           {/* Fallback to old approach if orderedElements not available */}
           {(!q.orderedElements || q.orderedElements.length === 0) && (
             <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-              {renderWithInlineLatex(q.text)}
+              {renderSimpleLatex(q.text)}
             </div>
           )}
         </div>
@@ -140,15 +158,44 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             quizName={quizName} 
             questionIndex={seq} 
           />
-          <select name={q.id} value={value} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
-            <option value="">– Select –</option>
-            <option value="R">✓ Richtig</option>
-            <option value="F">✗ Falsch</option>
-          </select>
-          {showFeedback && (
-            <span className={feedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-              {feedback === 'correct' ? '✅' : '❌'}
-            </span>
+          {showFeedback ? (
+            // When showing feedback, display user selection and expected answer
+            <div className="flex items-center space-x-2">
+              {/* Show what the user selected (if anything) */}
+              {value ? (
+                <>
+                  <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                    feedback === 'correct'
+                      ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                      : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                  }`}>
+                    {value === 'R' ? '✓ Richtig' : '✗ Falsch'}
+                  </span>
+                  {/* Show correct/incorrect symbol */}
+                  <span className={feedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                    {feedback === 'correct' ? '✅' : '❌'}
+                  </span>
+                </>
+              ) : (
+                // If user didn't select anything, show placeholder and cross
+                <>
+                  <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                    (not selected)
+                  </span>
+                  <span className="text-red-500 dark:text-red-400">❌</span>
+                </>
+              )}
+              {/* Show expected answer in gray background */}
+              <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                {q.answer === 'R' ? '✓ Richtig' : '✗ Falsch'}
+              </span>
+            </div>
+          ) : (
+            <select name={q.id} value={value} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
+              <option value="">– Select –</option>
+              <option value="R">✓ Richtig</option>
+              <option value="F">✗ Falsch</option>
+            </select>
           )}
         </div>
       </div>
@@ -192,7 +239,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
                 className="explanation mt-2 text-gray-700 dark:text-gray-300"
                 style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
               >
-                {renderWithInlineLatex(q.explanation)}
+                {renderSimpleLatex(q.explanation)}
               </div>
               {q.explanationImages && q.explanationImages.length > 0 && (
                 <div className="my-2">
@@ -210,13 +257,6 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
                 <div className="my-2">
                   {q.explanationCodeBlocks.map((cb, idx) => (
                     <CodeBlock key={idx} code={cb.code} lang={cb.lang} />
-                  ))}
-                </div>
-              )}
-              {q.explanationLatexBlocks && q.explanationLatexBlocks.length > 0 && (
-                <div className="my-2">
-                  {q.explanationLatexBlocks.map((lb, idx) => (
-                    <LatexBlock key={idx} latex={lb.latex} type={lb.type} />
                   ))}
                 </div>
               )}
