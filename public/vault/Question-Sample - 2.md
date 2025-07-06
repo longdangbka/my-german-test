@@ -1,4 +1,4 @@
-## XXYY $x=5+1$
+## XXYY $x=5+1$ asdasasd
 
 ### Questions
 
@@ -125,10 +125,10 @@ E: "Die Führung ist auf Deutsch und Englisch."
 TYPE: CLOZE
 
 Q: 
-{{Machen}} Sie bitte während der Führung Handys und Smartphones {aus} oder stellen Sie sie auf {lautlos}.
-U Sie bitte während Führung Handys und Smartphones {aus} oder stellen Sie sie auf {lautlos}.
+{{c::Machen}} Sie bitte während der Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
+U Sie bitte während Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
 
-| {{a}}   | b   |
+| {{c::a}}   | b   |
 | --- | --- |
 | 1   | 2   |
 
@@ -148,5 +148,36 @@ E:
 
 ausmachen = to turn off
 turn off = ausmachen
+
+--- end-question
+
+## LaTeX CLOZE Test Section
+
+--- start-question
+TYPE: CLOZE
+
+Q: 
+{{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+
+Test with inline LaTeX: The formula {{c::$a^2 + b^2 = c^2$}} is famous.
+
+Another test: {{c::Lösung $y=5_{1}$}} ist richtig.
+
+| {{a}}   | b   |
+| --- | --- |
+| 1   | 2   |
+
+$x=5$
+
+$$y=5_{1}$$
+
+E:
+
+| $a^2$  | b  |
+| --- | --- |
+| 1   | 2   |
+
+"Machen" means "to do/make"
+The solution $y=5_1$ is the correct answer.
 
 --- end-question

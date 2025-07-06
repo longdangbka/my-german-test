@@ -34,7 +34,7 @@
     "dist-portable-full": "npm run build && electron-builder --win --publish=never",
     "dist-dev": "electron-builder --dir",
     "dist-dev-fast": "electron-builder --dir --config.compression=store --config.win.forceCodeSigning=false",
-    "dist-dev-ultra": "electron-builder --dir --config.compression=store --config.win.forceCodeSigning=false --config.asar=false",
+    "dist-dev-debug": "electron-builder --dir --config.compression=store --config.win.forceCodeSigning=false --config.asar=false",
     "dist-all": "npm run build && electron-builder --win --mac --linux",
     "update-quizzes": "node scripts/auto-generate-manifest.js"
   },
@@ -61,8 +61,13 @@
     "productName": "My German Test",
     "copyright": "Copyright © 2025 My German Test",
     "extends": null,
-    "compression": "store",
+    "compression": "normal",
     "removePackageKeywords": true,
+    "asar": true,
+    "asarUnpack": [
+      "**/node_modules/sharp/**/*",
+      "**/node_modules/fsevents/**/*"
+    ],
     "directories": {
       "output": "dist",
       "buildResources": "assets"

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Real App Parsing</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-case { margin: 20px 0; padding: 15px; border: 1px solid #ccc; }
+        .result { background: #f0f0f0; padding: 10px; margin: 10px 0; }
+        .error { color: red; }
+        .success { color: green; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <h1>Debug Real App Parsing</h1>
+    <div id="results"></div>
+
+    <script>
+        // Test the actual question parsing by directly calling the parseQuestions function
+        async function testRealParsing() {
+            try {
+                // Load the actual question file
+                const response = await fetch('/vault/Question-Sample.md');
+                const content = await response.text();
+                
+                console.log('Loaded content:', content);
+                
+                const resultsDiv = document.getElementById('results');
+                
+                // Display the raw content
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'test-case';
+                contentDiv.innerHTML = `
+                    <h3>Raw Markdown Content</h3>
+                    <pre>${content}</pre>
+                `;
+                resultsDiv.appendChild(contentDiv);
+                
+                // Try to parse questions using the app's parser
+                // Since we can't easily import the parser here, let's check if questions are available
+                // through the React app's global state
+                
+                if (window.React) {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'test-case';
+                    testDiv.innerHTML = `
+                        <h3>React App Status</h3>
+                        <p class="success">✅ React is loaded</p>
+                        <p>Check browser console for question parsing logs</p>
+                    `;
+                    resultsDiv.appendChild(testDiv);
+                } else {
+                    const testDiv = document.createElement('div');
+                    testDiv.className = 'test-case';
+                    testDiv.innerHTML = `
+                        <h3>React App Status</h3>
+                        <p class="error">❌ React not loaded yet</p>
+                    `;
+                    resultsDiv.appendChild(testDiv);
+                }
+                
+                // Show what cloze markers should be found
+                const clozeRegex = /\{\{c::([^}]+)\}\}/g;
+                const matches = [...content.matchAll(clozeRegex)];
+                
+                const clozeDiv = document.createElement('div');
+                clozeDiv.className = 'test-case';
+                clozeDiv.innerHTML = `
+                    <h3>Expected Cloze Markers Found</h3>
+                    <p>Found ${matches.length} cloze markers:</p>
+                    <ul>
+                        ${matches.map((match, idx) => `<li><strong>Marker ${idx + 1}:</strong> ${match[0]} → content: "${match[1]}"</li>`).join('')}
+                    </ul>
+                `;
+                resultsDiv.appendChild(clozeDiv);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'test-case error';
+                errorDiv.innerHTML = `
+                    <h3>Error</h3>
+                    <p>${error.message}</p>
+                `;
+                document.getElementById('results').appendChild(errorDiv);
+            }
+        }
+        
+        // Run the test
+        testRealParsing();
+        
+        // Also check if we can access the main React app's state
+        setTimeout(() => {
+            if (window.parent !== window) {
+                // We're in an iframe, try to access parent
+                try {
+                    const parentReact = window.parent.React;
+                    if (parentReact) {
+                        console.log('Found React in parent window');
+                    }
+                } catch (e) {
+                    console.log('Cannot access parent window');
+                }
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

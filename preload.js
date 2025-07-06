@@ -13,6 +13,11 @@ contextBridge.exposeInMainWorld('electron', {
   listVaultFiles: () => ipcRenderer.invoke('vault:list-files'),
   writeVaultFile: (filename, content) => ipcRenderer.invoke('vault:write-file', filename, content),
   
+  // Vault folder management
+  selectVaultFolder: () => ipcRenderer.invoke('vault:select-folder'),
+  getVaultInfo: () => ipcRenderer.invoke('vault:get-info'),
+  resetVaultToDefault: () => ipcRenderer.invoke('vault:reset-to-default'),
+  
   // Platform information
   platform: process.platform,
   

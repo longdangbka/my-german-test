@@ -5,8 +5,12 @@ appId: com.example.my-german-test
 productName: My German Test
 copyright: Copyright © 2025 My German Test
 extends: null
-compression: store
+compression: normal
 removePackageKeywords: true
+asar: true
+asarUnpack:
+  - '**/node_modules/sharp/**/*'
+  - '**/node_modules/fsevents/**/*'
 files:
   - filter:
       - build/static/css/*.css
@@ -46,5 +50,4 @@ mac:
   target: dmg
 linux:
   target: AppImage
-asar: false
 electronVersion: 37.2.0

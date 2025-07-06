@@ -3,7 +3,7 @@
  */
 
 import { extractContentElements } from '../utils/contentExtractor.js';
-import { PATTERNS, QUESTION_TYPES, PATHS } from '../../../shared/constants/index.js';
+import { PATTERNS, QUESTION_TYPES, PATHS, parseClozeMarkers } from '../../../shared/constants/index.js';
 import { getVaultPath } from '../../../utils/testUtils';
 import { extractMatches, normalizeText } from '../../../shared/utils/index.js';
 
@@ -190,24 +190,46 @@ function parseTrueFalseQuestion(id, questionText, answerText, explanationText) {
  * @returns {Object} Parsed Cloze question
  */
 function parseClozeQuestion(id, questionText, explanationText) {
-  // Extract cloze blanks from the original raw content
-  const blankMatches = extractMatches(questionText, PATTERNS.CLOZE_MARKER);
-  const blanks = blankMatches.map(match => match.content);
+  console.log('🔍 parseClozeQuestion - Input:', { id, questionText, explanationText });
+  
+  // Extract cloze blanks from the original raw content using the new parser
+  const clozeMarkers = parseClozeMarkers(questionText);
+  console.log('🔍 parseClozeQuestion - Found cloze markers:', clozeMarkers);
+  
+  const blanks = clozeMarkers.map(marker => marker.content);
+  console.log('🔍 parseClozeQuestion - Extracted blanks:', blanks);
   
   // Process content elements
   const { orderedElements, images, codeBlocks, latexBlocks, htmlTables } = extractContentElements(questionText);
+  console.log('🔍 parseClozeQuestion - Extracted elements:', orderedElements);
   
   // Replace cloze markers with blanks in text elements
   const processedOrderedElements = orderedElements.map(element => {
     if (element.type === 'text') {
-      const processedContent = element.content.replace(PATTERNS.CLOZE_MARKER, '_____');
+      let processedContent = element.content;
+      const elementMarkers = parseClozeMarkers(processedContent);
+      console.log(`🔍 parseClozeQuestion - Processing text element. Original: "${processedContent}", markers:`, elementMarkers);
+      // Replace from end to start to maintain positions
+      for (let i = elementMarkers.length - 1; i >= 0; i--) {
+        const marker = elementMarkers[i];
+        processedContent = processedContent.slice(0, marker.start) + '_____' + processedContent.slice(marker.end);
+      }
+      console.log(`🔍 parseClozeQuestion - Processed text element: "${processedContent}"`);
       return { ...element, content: processedContent };
     }
     return element;
   });
   
+  console.log('🔍 parseClozeQuestion - Final processed elements:', processedOrderedElements);
+  
   // Process main text for backward compatibility
-  const processedText = questionText.replace(PATTERNS.CLOZE_MARKER, '_____');
+  let processedText = questionText;
+  const textMarkers = parseClozeMarkers(processedText);
+  // Replace from end to start to maintain positions
+  for (let i = textMarkers.length - 1; i >= 0; i--) {
+    const marker = textMarkers[i];
+    processedText = processedText.slice(0, marker.start) + '_____' + processedText.slice(marker.end);
+  }
   
   const explanationElements = explanationText ? extractContentElements(explanationText) : { orderedElements: [] };
   

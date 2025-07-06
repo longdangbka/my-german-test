@@ -1,7 +1,50 @@
-const { app, BrowserWindow, ipcMain, nativeTheme, Menu, protocol } = require('electron');
+const { app, BrowserWindow, ipcMain, nativeTheme, Menu, protocol, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const isDev = process.env.ELECTRON_IS_DEV === 'true';
+
+// Custom vault path management
+let customVaultPath = null;
+
+// Load custom vault path from user data
+function loadCustomVaultPath() {
+  try {
+    const userDataPath = app.getPath('userData');
+    const configFile = path.join(userDataPath, 'vault-config.json');
+    
+    if (fs.existsSync(configFile)) {
+      const config = JSON.parse(fs.readFileSync(configFile, 'utf-8'));
+      if (config.customVaultPath && fs.existsSync(config.customVaultPath)) {
+        customVaultPath = config.customVaultPath;
+        console.log('Loaded custom vault path:', customVaultPath);
+      } else if (config.customVaultPath) {
+        console.warn('Custom vault path no longer exists:', config.customVaultPath);
+      }
+    }
+  } catch (error) {
+    console.error('Error loading custom vault path:', error);
+  }
+}
+
+// Save custom vault path to user data
+function saveCustomVaultPath(vaultPath) {
+  try {
+    const userDataPath = app.getPath('userData');
+    const configFile = path.join(userDataPath, 'vault-config.json');
+    
+    // Ensure user data directory exists
+    if (!fs.existsSync(userDataPath)) {
+      fs.mkdirSync(userDataPath, { recursive: true });
+    }
+    
+    const config = { customVaultPath: vaultPath };
+    fs.writeFileSync(configFile, JSON.stringify(config, null, 2), 'utf-8');
+    customVaultPath = vaultPath;
+    console.log('Saved custom vault path:', vaultPath);
+  } catch (error) {
+    console.error('Error saving custom vault path:', error);
+  }
+}
 
 // Enable live reload for Electron in development
 if (isDev) {
@@ -34,6 +77,13 @@ function registerIpcHandlers() {
   // Handle vault file requests
   // Helper function to find vault path
   function getVaultPath() {
+    // First priority: custom vault path if set and exists
+    if (customVaultPath && fs.existsSync(customVaultPath)) {
+      console.log('Using custom vault path:', customVaultPath);
+      return customVaultPath;
+    }
+    
+    // Second priority: default vault locations
     let vaultPath;
     if (isDev) {
       vaultPath = path.join(__dirname, 'public', 'vault');
@@ -58,6 +108,7 @@ function registerIpcHandlers() {
       }
     }
     
+    console.log('Using default vault path:', vaultPath);
     return vaultPath;
   }
 
@@ -182,33 +233,11 @@ function registerIpcHandlers() {
   // Handle writing bookmarks to vault
   ipcMain.handle('vault:write-file', async (event, filename, content) => {
     try {
-      let vaultPath;
-      if (isDev) {
-        vaultPath = path.join(__dirname, 'public', 'vault');
-      } else {
-        vaultPath = path.join(process.resourcesPath, 'vault');
-      }
+      const vaultPath = getVaultPath();
       
-      // If the primary path doesn't exist, try alternative paths
+      // If the vault path doesn't exist, create it
       if (!fs.existsSync(vaultPath)) {
-        const altPaths = [
-          path.join(__dirname, 'vault'),
-          path.join(__dirname, 'public', 'vault'),
-          path.join(__dirname, '..', 'vault'),
-          path.join(process.cwd(), 'vault')
-        ];
-        
-        for (const altPath of altPaths) {
-          if (fs.existsSync(altPath)) {
-            vaultPath = altPath;
-            break;
-          }
-        }
-        
-        // If still no vault directory exists, create it
-        if (!fs.existsSync(vaultPath)) {
-          fs.mkdirSync(vaultPath, { recursive: true });
-        }
+        fs.mkdirSync(vaultPath, { recursive: true });
       }
       
       const filePath = path.join(vaultPath, filename);
@@ -220,6 +249,87 @@ function registerIpcHandlers() {
     } catch (error) {
       console.error('Error writing vault file:', error);
       return false;
+    }
+  });
+
+  // Handle vault folder selection
+  ipcMain.handle('vault:select-folder', async (event) => {
+    try {
+      const result = await dialog.showOpenDialog({
+        properties: ['openDirectory'],
+        title: 'Select Vault Folder',
+        buttonLabel: 'Select Vault Folder',
+        message: 'Choose a folder containing your quiz files (.md files)'
+      });
+
+      if (!result.canceled && result.filePaths.length > 0) {
+        const selectedPath = result.filePaths[0];
+        
+        // Validate that the folder contains .md files
+        const files = fs.readdirSync(selectedPath);
+        const mdFiles = files.filter(file => file.endsWith('.md'));
+        
+        if (mdFiles.length === 0) {
+          return { 
+            success: false, 
+            error: 'Selected folder does not contain any .md (Markdown) files. Please choose a folder with quiz files.' 
+          };
+        }
+        
+        // Save the custom vault path
+        saveCustomVaultPath(selectedPath);
+        
+        return { 
+          success: true, 
+          path: selectedPath
+        };
+      }
+      
+      return { success: false, error: 'No folder selected' };
+    } catch (error) {
+      console.error('Error selecting vault folder:', error);
+      return { success: false, error: error.message };
+    }
+  });
+
+  // Handle getting current vault info
+  ipcMain.handle('vault:get-info', async () => {
+    try {
+      const currentPath = getVaultPath();
+      const isCustom = customVaultPath !== null;
+      
+      return {
+        path: currentPath,
+        isCustom
+      };
+    } catch (error) {
+      console.error('Error getting vault info:', error);
+      return {
+        path: null,
+        isCustom: false
+      };
+    }
+  });
+
+  // Handle resetting to default vault
+  ipcMain.handle('vault:reset-to-default', async () => {
+    try {
+      // Clear custom vault path
+      customVaultPath = null;
+      
+      // Remove config file
+      const userDataPath = app.getPath('userData');
+      const configFile = path.join(userDataPath, 'vault-config.json');
+      
+      if (fs.existsSync(configFile)) {
+        fs.unlinkSync(configFile);
+      }
+      
+      console.log('Reset to default vault path');
+      return { success: true };
+    } catch (error) {
+      console.error('Error resetting vault path:', error);
+      return { success: false, error: error.message };
     }
   });
 }
@@ -275,6 +385,136 @@ function createMenu() {
       ]
     },
     {
+      label: 'Vault',
+      submenu: [
+        {
+          label: 'Select Custom Vault Folder...',
+          accelerator: 'Ctrl+O',
+          click: async (item, focusedWindow) => {
+            if (focusedWindow) {
+              const result = await dialog.showOpenDialog(focusedWindow, {
+                properties: ['openDirectory'],
+                title: 'Select Vault Folder',
+                buttonLabel: 'Select Vault Folder',
+                message: 'Choose a folder containing your quiz files (.md files)'
+              });
+
+              if (!result.canceled && result.filePaths.length > 0) {
+                const selectedPath = result.filePaths[0];
+                
+                try {
+                  // Validate that the folder contains .md files
+                  const files = fs.readdirSync(selectedPath);
+                  const mdFiles = files.filter(file => file.endsWith('.md'));
+                  
+                  if (mdFiles.length === 0) {
+                    dialog.showMessageBox(focusedWindow, {
+                      type: 'warning',
+                      title: 'No Quiz Files Found',
+                      message: 'Selected folder does not contain any .md (Markdown) files.',
+                      detail: 'Please choose a folder with quiz files.'
+                    });
+                    return;
+                  }
+                  
+                  // Save the custom vault path
+                  saveCustomVaultPath(selectedPath);
+                  
+                  // Show success message
+                  dialog.showMessageBox(focusedWindow, {
+                    type: 'info',
+                    title: 'Vault Folder Updated',
+                    message: 'Successfully selected vault folder.',
+                    detail: `Location: ${selectedPath}`
+                  });
+                  
+                  // Reload the window to refresh the quiz list
+                  focusedWindow.reload();
+                } catch (error) {
+                  console.error('Error selecting vault folder:', error);
+                  dialog.showMessageBox(focusedWindow, {
+                    type: 'error',
+                    title: 'Error',
+                    message: 'Failed to access the selected folder.',
+                    detail: error.message
+                  });
+                }
+              }
+            }
+          }
+        },
+        {
+          label: 'Reset to Default Vault',
+          click: async (item, focusedWindow) => {
+            if (focusedWindow) {
+              try {
+                // Clear custom vault path
+                customVaultPath = null;
+                
+                // Remove config file
+                const userDataPath = app.getPath('userData');
+                const configFile = path.join(userDataPath, 'vault-config.json');
+                
+                if (fs.existsSync(configFile)) {
+                  fs.unlinkSync(configFile);
+                }
+                
+                console.log('Reset to default vault path');
+                
+                // Show success message
+                dialog.showMessageBox(focusedWindow, {
+                  type: 'info',
+                  title: 'Vault Reset',
+                  message: 'Successfully reset to default vault location.',
+                  detail: 'The app will now use the built-in vault folder.'
+                });
+                
+                // Reload the window to refresh the quiz list
+                focusedWindow.reload();
+              } catch (error) {
+                console.error('Error resetting vault:', error);
+                dialog.showMessageBox(focusedWindow, {
+                  type: 'error',
+                  title: 'Error',
+                  message: 'Failed to reset vault location.',
+                  detail: error.message
+                });
+              }
+            }
+          }
+        },
+        {
+          type: 'separator'
+        },
+        {
+          label: 'Show Current Vault Info',
+          click: async (item, focusedWindow) => {
+            if (focusedWindow) {
+              try {
+                const currentPath = getVaultPath();
+                const isCustom = customVaultPath !== null;
+                
+                dialog.showMessageBox(focusedWindow, {
+                  type: 'info',
+                  title: 'Current Vault Information',
+                  message: `Vault Type: ${isCustom ? 'Custom' : 'Default'}`,
+                  detail: `Location: ${currentPath}`
+                });
+              } catch (error) {
+                console.error('Error getting vault info:', error);
+                dialog.showMessageBox(focusedWindow, {
+                  type: 'error',
+                  title: 'Error',
+                  message: 'Failed to get vault information.',
+                  detail: error.message
+                });
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       label: 'View',
       submenu: [
         {
@@ -307,17 +547,6 @@ function createMenu() {
           }
         }
       ]
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'About',
-          click: () => {
-            // You can show an about dialog here
-          }
-        }
-      ]
     }
   ];
 
@@ -327,6 +556,7 @@ function createMenu() {
 
 // App event handlers
 app.whenReady().then(() => {
+  loadCustomVaultPath(); // Initialize custom vault path
   registerIpcHandlers();
   createWindow();
 });

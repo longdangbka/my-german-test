@@ -1,7 +1,10 @@
 // questions.js
 // Dynamically load and parse all standard question files from public/vault
 
+import { parseClozeMarkers } from './shared/constants/index.js';
+
 export async function loadQuestionGroups(signal, filename = 'Question-Sample.md') {
+  console.log('🔍 loadQuestionGroups - Starting with filename:', filename);
   const groups = [];
 
   try {
@@ -44,12 +47,14 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
     }
     
     const parsed = parseStandardMarkdown(text);
+    console.log('🔍 loadQuestionGroups - Parsed question groups:', parsed);
     groups.push(...parsed);
   } catch (error) {
     console.error(`Error loading ${filename}:`, error);
     throw error;
   }
   
+  console.log('🔍 loadQuestionGroups - Final groups to return:', groups);
   return groups;
 }
 
@@ -57,7 +62,43 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
 function parseContentWithOrder(text, isCloze = false) {
   const elements = [];
   let remaining = text;
-  let position = 0;
+
+  // For CLOZE questions, we need to protect LaTeX inside cloze markers from being processed
+  let protectedText = remaining;
+  const clozeProtections = [];
+  
+  if (isCloze) {
+    // First, find all cloze markers and replace LaTeX inside them with temporary protection markers
+    const clozeRegex = /\{\{c::([^}]+)\}\}/g;
+    let protectionIndex = 0;
+    
+    protectedText = remaining.replace(clozeRegex, (match, content) => {
+      // Replace LaTeX inside this cloze marker with protection markers
+      let protectedContent = content;
+      
+      // Protect inline LaTeX $...$
+      protectedContent = protectedContent.replace(/\$([^$\n]+?)\$/g, (latexMatch, latexContent) => {
+        const protectionMarker = `__CLOZE_LATEX_PROTECTION_${protectionIndex}__`;
+        clozeProtections.push({ marker: protectionMarker, original: latexMatch });
+        protectionIndex++;
+        return protectionMarker;
+      });
+      
+      // Protect display LaTeX $$...$$
+      protectedContent = protectedContent.replace(/\$\$([\s\S]+?)\$\$/g, (latexMatch, latexContent) => {
+        const protectionMarker = `__CLOZE_LATEX_PROTECTION_${protectionIndex}__`;
+        clozeProtections.push({ marker: protectionMarker, original: latexMatch });
+        protectionIndex++;
+        return protectionMarker;
+      });
+      
+      return `{{c::${protectedContent}}}`;
+    });
+    
+    console.log('🔍 PARSE ORDER - Original text:', remaining);
+    console.log('🔍 PARSE ORDER - Protected text:', protectedText);
+    console.log('🔍 PARSE ORDER - Cloze protections:', clozeProtections);
+  }
 
   // Create a list of all content patterns with their positions
   const patterns = [
@@ -68,174 +109,118 @@ function parseContentWithOrder(text, isCloze = false) {
     { type: 'latexInline', regex: /\$([^$\n]+?)\$/g }
   ];
 
-  // For CLOZE questions, we need to handle LaTeX differently to avoid interference with cloze markers
-  if (isCloze) {
-    // Find all matches with their positions, but exclude overlapping ones
-    const allMatches = [];
-    
-    patterns.forEach(pattern => {
-      let match;
-      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-      while ((match = regex.exec(remaining)) !== null) {
-        allMatches.push({
-          type: pattern.type,
-          match: match,
-          start: match.index,
-          end: match.index + match[0].length,
-          content: match[0]
-        });
-      }
-    });
+  // Find all matches with their positions, but exclude overlapping ones
+  const allMatches = [];
+  
+  patterns.forEach(pattern => {
+    let match;
+    const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+    const textToSearch = isCloze ? protectedText : remaining;
+    while ((match = regex.exec(textToSearch)) !== null) {
+      allMatches.push({
+        type: pattern.type,
+        match: match,
+        start: match.index,
+        end: match.index + match[0].length,
+        content: match[0]
+      });
+    }
+  });
 
-    // Sort by position and remove overlapping matches (prioritize longer/earlier matches)
-    allMatches.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
-    
-    const nonOverlappingMatches = [];
-    for (const currentMatch of allMatches) {
-      const hasOverlap = nonOverlappingMatches.some(existing => 
-        (currentMatch.start < existing.end && currentMatch.end > existing.start)
-      );
-      if (!hasOverlap) {
-        nonOverlappingMatches.push(currentMatch);
+  // Sort by position and remove overlapping matches (prioritize longer/earlier matches)
+  allMatches.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
+  
+  const nonOverlappingMatches = [];
+  for (const currentMatch of allMatches) {
+    const hasOverlap = nonOverlappingMatches.some(existing => 
+      (currentMatch.start < existing.end && currentMatch.end > existing.start)
+    );
+    if (!hasOverlap) {
+      nonOverlappingMatches.push(currentMatch);
+    }
+  }
+
+  // Sort again by position for processing
+  nonOverlappingMatches.sort((a, b) => a.start - b.start);
+
+  // Process matches in order, extracting text between them
+  let currentPos = 0;
+  const latexPlaceholders = [];
+  let placeholderIndex = 0;
+  const textToProcess = isCloze ? protectedText : remaining;
+
+  nonOverlappingMatches.forEach(({ type, match, start, end, content }) => {
+    // Add text before this match
+    if (start > currentPos) {
+      const textBefore = textToProcess.slice(currentPos, start).trim();
+      if (textBefore) {
+        // Restore cloze protections in text elements if this is a cloze question
+        let finalTextBefore = textBefore;
+        if (isCloze && clozeProtections.length > 0) {
+          clozeProtections.forEach(({ marker, original }) => {
+            finalTextBefore = finalTextBefore.replace(marker, original);
+          });
+        }
+        elements.push({ type: 'text', content: finalTextBefore });
       }
     }
 
-    // Sort again by position for processing
-    nonOverlappingMatches.sort((a, b) => a.start - b.start);
-
-    // Process matches in order, extracting text between them
-    let currentPos = 0;
-    const latexPlaceholders = [];
-    let placeholderIndex = 0;
-
-    nonOverlappingMatches.forEach(({ type, match, start, end, content }) => {
-      // Add text before this match
-      if (start > currentPos) {
-        const textBefore = remaining.slice(currentPos, start).trim();
-        if (textBefore) {
-          elements.push({ type: 'text', content: textBefore });
-        }
-      }
-
-      // Add the matched element
-      switch (type) {
-        case 'image':
-          elements.push({ type: 'image', content: match[1] });
-          break;
-        case 'codeBlock':
-          elements.push({ type: 'codeBlock', content: { lang: match[1], code: match[2] } });
-          break;
-        case 'table':
-          // For CLOZE questions, preserve table content as-is (don't convert to HTML yet)
-          // The cloze markers inside tables will be processed later
-          elements.push({ type: 'table', content: match[0] });
-          break;
-        case 'latexDisplay':
+    // Add the matched element
+    switch (type) {
+      case 'image':
+        elements.push({ type: 'image', content: match[1] });
+        break;
+      case 'codeBlock':
+        elements.push({ type: 'codeBlock', content: { lang: match[1], code: match[2] } });
+        break;
+      case 'table':
+        // For CLOZE questions, preserve table content as-is (don't convert to HTML yet)
+        // The cloze markers inside tables will be processed later
+        elements.push({ type: 'table', content: match[0] });
+        break;
+      case 'latexDisplay':
+        if (isCloze) {
           // For cloze, replace with placeholder in text
           const displayPlaceholder = `__LATEX_DISPLAY_${placeholderIndex}__`;
           elements.push({ type: 'latexPlaceholder', content: displayPlaceholder });
           latexPlaceholders.push({ placeholder: displayPlaceholder, original: content, latex: match[1], latexType: 'display' });
           placeholderIndex++;
-          break;
-        case 'latexInline':
+        } else {
+          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'display' } });
+        }
+        break;
+      case 'latexInline':
+        if (isCloze) {
           // For cloze, replace with placeholder in text
           const inlinePlaceholder = `__LATEX_INLINE_${placeholderIndex}__`;
           elements.push({ type: 'latexPlaceholder', content: inlinePlaceholder });
           latexPlaceholders.push({ placeholder: inlinePlaceholder, original: content, latex: match[1], latexType: 'inline' });
           placeholderIndex++;
-          break;
-      }
-
-      currentPos = end;
-    });
-
-    // Add remaining text
-    if (currentPos < remaining.length) {
-      const remainingText = remaining.slice(currentPos).trim();
-      if (remainingText) {
-        elements.push({ type: 'text', content: remainingText });
-      }
+        } else {
+          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'inline' } });
+        }
+        break;
     }
 
-    return { elements, latexPlaceholders };
-  } else {
-    // For non-cloze questions, simpler processing but still avoid overlaps
-    const allMatches = [];
-    
-    patterns.forEach(pattern => {
-      let match;
-      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-      while ((match = regex.exec(remaining)) !== null) {
-        allMatches.push({
-          type: pattern.type,
-          match: match,
-          start: match.index,
-          end: match.index + match[0].length,
-          content: match[0]
+    currentPos = end;
+  });
+
+  // Add remaining text
+  if (currentPos < textToProcess.length) {
+    const remainingText = textToProcess.slice(currentPos).trim();
+    if (remainingText) {
+      // Restore cloze protections in remaining text if this is a cloze question
+      let finalRemainingText = remainingText;
+      if (isCloze && clozeProtections.length > 0) {
+        clozeProtections.forEach(({ marker, original }) => {
+          finalRemainingText = finalRemainingText.replace(marker, original);
         });
       }
-    });
-
-    // Sort by position and remove overlapping matches (prioritize longer/earlier matches)
-    allMatches.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
-    
-    const nonOverlappingMatches = [];
-    for (const currentMatch of allMatches) {
-      const hasOverlap = nonOverlappingMatches.some(existing => 
-        (currentMatch.start < existing.end && currentMatch.end > existing.start)
-      );
-      if (!hasOverlap) {
-        nonOverlappingMatches.push(currentMatch);
-      }
+      elements.push({ type: 'text', content: finalRemainingText });
     }
-
-    // Sort again by position for processing
-    nonOverlappingMatches.sort((a, b) => a.start - b.start);
-
-    // Process matches in order
-    let currentPos = 0;
-
-    nonOverlappingMatches.forEach(({ type, match, start, end, content }) => {
-      // Add text before this match
-      if (start > currentPos) {
-        const textBefore = remaining.slice(currentPos, start).trim();
-        if (textBefore) {
-          elements.push({ type: 'text', content: textBefore });
-        }
-      }
-
-      // Add the matched element
-      switch (type) {
-        case 'image':
-          elements.push({ type: 'image', content: match[1] });
-          break;
-        case 'codeBlock':
-          elements.push({ type: 'codeBlock', content: { lang: match[1], code: match[2] } });
-          break;
-        case 'table':
-          elements.push({ type: 'table', content: match[0] });
-          break;
-        case 'latexDisplay':
-          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'display' } });
-          break;
-        case 'latexInline':
-          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'inline' } });
-          break;
-      }
-
-      currentPos = end;
-    });
-
-    // Add remaining text
-    if (currentPos < remaining.length) {
-      const remainingText = remaining.slice(currentPos).trim();
-      if (remainingText) {
-        elements.push({ type: 'text', content: remainingText });
-      }
-    }
-
-    return { elements, latexPlaceholders: [] };
   }
+
+  return { elements, latexPlaceholders };
 }
 
 // Legacy function for backward compatibility - now uses the new ordered parsing
@@ -266,7 +251,14 @@ function extractContentElements(text, isCloze = false) {
           // For CLOZE questions, preserve table content as markdown and extract cloze markers
           const tableContent = element.content;
           // Extract cloze markers from table before conversion for text processing
-          cleanedText += tableContent.replace(/\{\{([^}]+)\}\}|\{([^}]+)\}/g, '_____') + ' ';
+          const tableMarkers = parseClozeMarkers(tableContent);
+          let processedTableContent = tableContent;
+          // Replace cloze markers with blanks, from end to start to maintain positions
+          for (let i = tableMarkers.length - 1; i >= 0; i--) {
+            const marker = tableMarkers[i];
+            processedTableContent = processedTableContent.slice(0, marker.start) + '_____' + processedTableContent.slice(marker.end);
+          }
+          cleanedText += processedTableContent + ' ';
           htmlTables.push(mdTableToHtml(tableContent));
           // For ordered elements in CLOZE questions, keep original cloze markers in the HTML
           // so TableWithLatex can render them as input fields
@@ -402,6 +394,10 @@ function parseStandardMarkdown(md) {
         }
         const typeM = code.match(/^TYPE:\s*(CLOZE|T-F)$/im);
         const type  = typeM ? typeM[1].toUpperCase() : null;
+        
+        console.log('🔍 QUESTION PARSE - Raw code:', code);
+        console.log('🔍 QUESTION PARSE - Type match:', typeM);
+        console.log('🔍 QUESTION PARSE - Detected type:', type);
 
         if (!type) {
           console.warn(`No type found for question ${idx + 1} in section ${num}`);
@@ -477,20 +473,36 @@ function parseStandardMarkdown(md) {
       }
 
       if (type === 'CLOZE') {
-        // Extract cloze markers from the original raw content (before any processing)
-        // This ensures we capture cloze markers from text, tables, and any other content
-        const blanks = Array.from(
-          rawQ.matchAll(/\{\{([^}]+)\}\}|\{([^}]+)\}/g),
-          m => m[1] || m[2]
-        );
+        console.log('🔍 MAIN PARSER - Processing CLOZE question. Raw Q:', rawQ);
+        
+        // Extract cloze markers from the original raw content using the new parser
+        const clozeMarkers = parseClozeMarkers(rawQ);
+        console.log('🔍 MAIN PARSER - Found cloze markers:', clozeMarkers);
+        
+        const blanks = clozeMarkers.map(marker => marker.content);
+        console.log('🔍 MAIN PARSER - Extracted blanks:', blanks);
 
-        // Replace cloze markers with blanks, then restore LaTeX placeholders if they exist
-        let text = qT.replace(/\{\{([^}]+)\}\}|\{([^}]+)\}/g, '_____');
+        // Replace cloze markers with blanks, using proper replacement
+        let text = rawQ;
+        // Replace from end to start to maintain positions
+        for (let i = clozeMarkers.length - 1; i >= 0; i--) {
+          const marker = clozeMarkers[i];
+          text = text.slice(0, marker.start) + '_____' + text.slice(marker.end);
+        }
+        console.log('🔍 MAIN PARSER - Processed text with blanks:', text);
         
         // Also process the ordered elements to replace cloze markers in text elements
         const processedOrderedElements = questionOrderedElements.map(element => {
           if (element.type === 'text') {
-            let processedContent = element.content.replace(/\{\{([^}]+)\}\}|\{([^}]+)\}/g, '_____');
+            let processedContent = element.content;
+            const elementMarkers = parseClozeMarkers(processedContent);
+            console.log(`🔍 MAIN PARSER - Processing text element. Original: "${processedContent}", markers:`, elementMarkers);
+            // Replace from end to start to maintain positions
+            for (let i = elementMarkers.length - 1; i >= 0; i--) {
+              const marker = elementMarkers[i];
+              processedContent = processedContent.slice(0, marker.start) + '_____' + processedContent.slice(marker.end);
+            }
+            console.log(`🔍 MAIN PARSER - Processed text element: "${processedContent}"`);
             // Restore LaTeX placeholders in the ordered elements too
             if (latexPlaceholders && latexPlaceholders.length > 0) {
               latexPlaceholders.forEach(({ placeholder, original }) => {
@@ -518,6 +530,8 @@ function parseStandardMarkdown(md) {
           return element;
         });
         
+        console.log('🔍 MAIN PARSER - Final processed ordered elements:', processedOrderedElements);
+        
         // Restore LaTeX placeholders back to original LaTeX (for CLOZE questions)
         if (type === 'CLOZE' && latexPlaceholders && latexPlaceholders.length > 0) {
           latexPlaceholders.forEach(({ placeholder, original }) => {
@@ -525,11 +539,33 @@ function parseStandardMarkdown(md) {
           });
         }
 
+        // For the blanks array, restore LaTeX placeholders so they contain the original LaTeX
+        const processedBlanks = blanks.map(blank => {
+          let processedBlank = blank;
+          if (latexPlaceholders && latexPlaceholders.length > 0) {
+            latexPlaceholders.forEach(({ placeholder, original }) => {
+              processedBlank = processedBlank.replace(placeholder, original);
+            });
+          }
+          return processedBlank;
+        });
+
+        console.log('🔍 MAIN PARSER - Original blanks:', blanks);
+        console.log('🔍 MAIN PARSER - Processed blanks with LaTeX:', processedBlanks);
+
+        console.log('🔍 MAIN PARSER - Final CLOZE question result:', {
+          id: `g${num}_q${idx+1}`,
+          type: 'CLOZE',
+          text,
+          blanks: processedBlanks,
+          orderedElements: processedOrderedElements
+        });
+
         return {
           id:          `g${num}_q${idx+1}`,
           type:        'CLOZE',
           text,
-          blanks,
+          blanks:      processedBlanks, // Use processed blanks with LaTeX restored
           explanation: eT,
           images,
           codeBlocks,

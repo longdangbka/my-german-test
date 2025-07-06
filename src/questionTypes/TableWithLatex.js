@@ -1,5 +1,6 @@
 import React from 'react';
 import { InlineMath, BlockMath } from 'react-katex';
+import { parseClozeMarkers } from '../shared/constants/index.js';
 
 export default function TableWithLatex({ htmlTable, question = null, value = {}, onChange = null, showFeedback = false, feedback = {}, startingBlankIndex = 0 }) {
   // Force component to re-mount when question changes to prevent caching issues
@@ -113,8 +114,8 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
     tempDiv.innerHTML = text;
     const decodedText = tempDiv.textContent || tempDiv.innerText || text;
     
-    // Check if this cell contains cloze markers (original {{}} or {} markers)
-    const hasClozeMarkers = /\{\{[^}]+\}\}|\{[^}]+\}/.test(decodedText);
+    // Check if this cell contains cloze markers (new {{c::}} syntax)
+    const hasClozeMarkers = /\{\{c::([^}]+)\}\}/.test(decodedText);
     
     // If we have cloze functionality and this cell has markers, render interactive inputs
     if (hasClozeMarkers && question && onChange && question.blanks) {
@@ -130,24 +131,41 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
     const parts = [];
     let remaining = text;
     
-    // Find cloze markers and replace them with input fields
-    const clozeRegex = /(\{\{[^}]+\}\}|\{[^}]+\})/g;
-    const segments = remaining.split(clozeRegex);
+    // Use the new cloze parser to find markers that can contain LaTeX
+    const clozeMarkers = parseClozeMarkers(remaining);
     
-    for (let i = 0; i < segments.length; i++) {
-      const segment = segments[i];
+    if (clozeMarkers.length === 0) {
+      // No cloze markers, just render with LaTeX
+      return renderWithLatex(remaining);
+    }
+    
+    let currentPos = 0;
+    
+    for (let i = 0; i < clozeMarkers.length; i++) {
+      const marker = clozeMarkers[i];
       
-      // Check if this segment is a cloze marker
-      if (clozeRegex.test(segment)) {
-        // Extract the content inside the cloze marker
-        const markerContent = segment.replace(/^\{\{?|\}?\}$/g, '');
-        
-        // Find the corresponding blank index in the question's blanks array
-        const blankIndex = question.blanks.findIndex(blank => blank === markerContent);
-        
-        if (blankIndex !== -1) {
-          const fieldName = `${question.id}_${blankIndex + 1}`;
-          const inputValue = value[fieldName] || '';
+      // Add text before this marker
+      if (marker.start > currentPos) {
+        const textBefore = remaining.slice(currentPos, marker.start);
+        if (textBefore) {
+          const renderedText = renderWithLatex(textBefore);
+          if (Array.isArray(renderedText)) {
+            parts.push(...renderedText);
+          } else {
+            parts.push(renderedText);
+          }
+        }
+      }
+      
+      // Handle the cloze marker
+      const markerContent = marker.content;
+      
+      // Find the corresponding blank index in the question's blanks array
+      const blankIndex = question.blanks.findIndex(blank => blank === markerContent);
+      
+      if (blankIndex !== -1) {
+        const fieldName = `${question.id}_${blankIndex + 1}`;
+        const inputValue = value[fieldName] || '';
           const feedbackKey = fieldName;
           const isCorrect = showFeedback && feedback[feedbackKey] === 'correct';
           const isIncorrect = showFeedback && feedback[feedbackKey] === 'incorrect';
@@ -185,12 +203,18 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
             </span>
           );
         } else {
-          // If no matching blank found, just show the marker as text
-          parts.push(<span key={i} className="text-gray-500">{segment}</span>);
+          // If no matching blank found, just show the marker as text  
+          parts.push(<span key={`marker-${i}`} className="text-gray-500">{marker.match}</span>);
         }
-      } else if (segment) {
-        // This is regular text - render with LaTeX processing
-        const renderedText = renderWithLatex(segment);
+      
+      currentPos = marker.end;
+    }
+    
+    // Add remaining text after the last marker
+    if (currentPos < remaining.length) {
+      const textAfter = remaining.slice(currentPos);
+      if (textAfter) {
+        const renderedText = renderWithLatex(textAfter);
         if (Array.isArray(renderedText)) {
           parts.push(...renderedText);
         } else {

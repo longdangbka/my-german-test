@@ -21,10 +21,62 @@ export function initFeedback(q) {
   return out;
 }
 export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
+  console.log('🔍 CLOZE RENDERER - Question object:', q);
+  console.log('🔍 CLOZE RENDERER - Question type:', q.type);
+  console.log('🔍 CLOZE RENDERER - Question blanks:', q.blanks);
+  console.log('🔍 CLOZE RENDERER - Question orderedElements:', q.orderedElements);
+  
+  // Add visual debugging for development
+  const isDebug = window.location.search.includes('debug');
+  
+  // In debug mode, show detailed information
+  if (isDebug) {
+    return (
+      <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
+        <div className="debug-info bg-yellow-100 p-4 mb-4 text-sm border-l-4 border-yellow-500">
+          <h4 className="font-bold text-lg mb-2">🔍 DEBUG INFO - CLOZE Question</h4>
+          <div className="space-y-2">
+            <div><strong>ID:</strong> {q.id}</div>
+            <div><strong>Type:</strong> {q.type}</div>
+            <div><strong>Has Blanks:</strong> {q.blanks ? `Yes (${q.blanks.length})` : 'No'}</div>
+            <div><strong>Blanks:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{JSON.stringify(q.blanks, null, 2)}</pre></div>
+            <div><strong>Elements Count:</strong> {q.orderedElements?.length || 0}</div>
+            <div><strong>First Element:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{JSON.stringify(q.orderedElements?.[0], null, 2)}</pre></div>
+            <div><strong>Text Property:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{q.text}</pre></div>
+          </div>
+        </div>
+        
+        {/* Show the actual rendered content */}
+        <div className="border-t pt-4">
+          <h5 className="font-bold mb-2">Rendered Content:</h5>
+          {(!q.blanks || q.blanks.length === 0) ? (
+            <div>
+              <p className="text-red-600 mb-2">⚠️ No blanks - rendering as read-only</p>
+              {renderOrderedElements(q.orderedElements || [])}
+            </div>
+          ) : (
+            <div>
+              <p className="text-green-600 mb-2">✅ Has blanks - rendering with inputs</p>
+              {renderOrderedElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+  
   // Use the new ordered elements approach for questions without blanks
   if (!q.blanks || q.blanks.length === 0) {
     return (
       <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
+        {isDebug && (
+          <div className="debug-info bg-yellow-100 p-2 mb-4 text-xs">
+            <strong>DEBUG - No blanks found:</strong><br/>
+            Type: {q.type}<br/>
+            Blanks: {JSON.stringify(q.blanks)}<br/>
+            Elements: {q.orderedElements?.length || 0}
+          </div>
+        )}
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {renderOrderedElements(q.orderedElements || [])}
@@ -48,6 +100,15 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
   // For cloze questions with blanks, render all content in order
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
+      {isDebug && (
+        <div className="debug-info bg-yellow-100 p-2 mb-4 text-xs">
+          <strong>DEBUG - CLOZE with blanks:</strong><br/>
+          Type: {q.type}<br/>
+          Blanks: {JSON.stringify(q.blanks)}<br/>
+          Elements: {q.orderedElements?.length || 0}<br/>
+          First element: {JSON.stringify(q.orderedElements?.[0])}
+        </div>
+      )}
       <div className="flex items-start justify-between">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
           {/* Render all content elements in original order */}
@@ -97,27 +158,35 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                   {renderWithInlineLatex(seg)}
                   {i < parts.length - 1 && blankIndex < question.blanks.length && (
                     <>
-                      <input
-                        key={`${question.id}_${blankIndex}_text_${i}`}
-                        name={`${question.id}_${blankIndex + 1}`}
-                        value={value[`${question.id}_${blankIndex + 1}`] || ''}
-                        onChange={onChange}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        spellCheck="false"
-                        className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                        data-blank-index={blankIndex}
-                      />
-                      {showFeedback && (
-                        <span
-                          className={
-                            (feedback[`${question.id}_${blankIndex + 1}`] === 'correct'
+                      {showFeedback ? (
+                        // When showing feedback, display only the answer with check/cross symbol
+                        <span className="inline-flex items-center gap-2 mx-2">
+                          {/* Show correct/incorrect symbol */}
+                          <span className={
+                            feedback[`${question.id}_${blankIndex + 1}`] === 'correct'
                               ? 'text-green-500 dark:text-green-400'
-                              : 'text-red-500 dark:text-red-400') + ' ml-2'
-                          }
-                        >
-                          {feedback[`${question.id}_${blankIndex + 1}`] === 'correct' ? '✅' : '❌'}
+                              : 'text-red-500 dark:text-red-400'
+                          }>
+                            {feedback[`${question.id}_${blankIndex + 1}`] === 'correct' ? '✅' : '❌'}
+                          </span>
+                          {/* Show correct answer in a styled box */}
+                          <span className="inline-block px-3 py-1 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-600 rounded text-sm font-medium">
+                            {renderWithInlineLatex(question.blanks[blankIndex] || '')}
+                          </span>
                         </span>
+                      ) : (
+                        // When not showing feedback, display the input field
+                        <input
+                          key={`${question.id}_${blankIndex}_text_${i}`}
+                          name={`${question.id}_${blankIndex + 1}`}
+                          value={value[`${question.id}_${blankIndex + 1}`] || ''}
+                          onChange={onChange}
+                          autoComplete="off"
+                          autoCorrect="off"
+                          spellCheck="false"
+                          className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                          data-blank-index={blankIndex}
+                        />
                       )}
                       {(() => { blankIndex++; return null; })()}
                     </>

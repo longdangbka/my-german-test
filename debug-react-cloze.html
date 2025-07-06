@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug React Cloze Parsing</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        // Copy our parseClozeMarkers function
+        function parseClozeMarkers(text) {
+            console.log('🔍 parseClozeMarkers called with text:', text);
+            const markers = [];
+            let i = 0;
+            
+            while (i < text.length) {
+                if (text[i] === '{' && text[i + 1] === '{') {
+                    // Double brace marker {{...}}
+                    const start = i;
+                    i += 2; // Skip opening {{
+                    let content = '';
+                    let braceCount = 2;
+                    let inLaTeX = false;
+                    
+                    while (i < text.length && braceCount > 0) {
+                        const char = text[i];
+                        
+                        if (char === '$' && !inLaTeX) {
+                            inLaTeX = true;
+                            content += char;
+                        } else if (char === '$' && inLaTeX) {
+                            inLaTeX = false;
+                            content += char;
+                        } else if (!inLaTeX && char === '{') {
+                            braceCount++;
+                            content += char;
+                        } else if (!inLaTeX && char === '}') {
+                            braceCount--;
+                            if (braceCount > 0) content += char;
+                        } else {
+                            content += char;
+                        }
+                        
+                        i++;
+                    }
+                    
+                    if (braceCount === 0) {
+                        markers.push({
+                            match: `{{${content}}}`,
+                            content: content,
+                            start: start,
+                            end: i
+                        });
+                        console.log('Added marker:', `{{${content}}}`);
+                    } else {
+                        // Unmatched braces, treat as regular text
+                        i = start + 1;
+                        console.log('Unmatched braces, skipping');
+                    }
+                } else if (text[i] === '{' && text[i + 1] !== '{') {
+                    // Single brace marker {...}
+                    const start = i;
+                    i += 1; // Skip opening {
+                    let content = '';
+                    let braceCount = 1;
+                    let inLaTeX = false;
+                    
+                    while (i < text.length && braceCount > 0) {
+                        const char = text[i];
+                        
+                        if (char === '$' && !inLaTeX) {
+                            inLaTeX = true;
+                            content += char;
+                        } else if (char === '$' && inLaTeX) {
+                            inLaTeX = false;
+                            content += char;
+                        } else if (!inLaTeX && char === '{') {
+                            braceCount++;
+                            content += char;
+                        } else if (!inLaTeX && char === '}') {
+                            braceCount--;
+                            if (braceCount > 0) content += char;
+                        } else {
+                            content += char;
+                        }
+                        
+                        i++;
+                    }
+                    
+                    if (braceCount === 0) {
+                        markers.push({
+                            match: `{${content}}`,
+                            content: content,
+                            start: start,
+                            end: i
+                        });
+                        console.log('Added marker:', `{${content}}`);
+                    } else {
+                        // Unmatched braces, treat as regular text
+                        i = start + 1;
+                        console.log('Unmatched braces, skipping');
+                    }
+                } else {
+                    i++;
+                }
+            }
+            
+            console.log('🔍 parseClozeMarkers returning markers:', markers);
+            return markers;
+        }
+
+        function DebugClozeComponent() {
+            const [inputText, setInputText] = React.useState("{{Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.");
+            const [results, setResults] = React.useState(null);
+            
+            const parseText = () => {
+                console.clear();
+                console.log('Testing with:', inputText);
+                
+                const markers = parseClozeMarkers(inputText);
+                console.log('Markers found:', markers);
+                
+                // Test replacement
+                let processedText = inputText;
+                for (let i = markers.length - 1; i >= 0; i--) {
+                    const marker = markers[i];
+                    processedText = processedText.substring(0, marker.start) + '_____' + processedText.substring(marker.end);
+                }
+                
+                const result = {
+                    original: inputText,
+                    markers: markers,
+                    processed: processedText,
+                    blanks: markers.map(m => m.content)
+                };
+                
+                console.log('Final result:', result);
+                setResults(result);
+            };
+            
+            React.useEffect(() => {
+                parseText();
+            }, [inputText]);
+            
+            return React.createElement('div', { style: { padding: '20px', fontFamily: 'Arial, sans-serif' } }, [
+                React.createElement('h1', { key: 'title' }, 'Debug Cloze Parser'),
+                React.createElement('div', { key: 'input', style: { marginBottom: '20px' } }, [
+                    React.createElement('label', { key: 'label' }, 'Test Text:'),
+                    React.createElement('br', { key: 'br' }),
+                    React.createElement('textarea', {
+                        key: 'textarea',
+                        value: inputText,
+                        onChange: (e) => setInputText(e.target.value),
+                        style: { width: '100%', height: '80px', marginTop: '5px' }
+                    }),
+                ]),
+                React.createElement('button', { key: 'button', onClick: parseText }, 'Parse Text'),
+                results && React.createElement('div', { key: 'results', style: { marginTop: '20px' } }, [
+                    React.createElement('h3', { key: 'results-title' }, 'Results:'),
+                    React.createElement('p', { key: 'original' }, React.createElement('strong', null, 'Original: '), results.original),
+                    React.createElement('p', { key: 'processed' }, React.createElement('strong', null, 'Processed: '), results.processed),
+                    React.createElement('p', { key: 'blanks' }, React.createElement('strong', null, 'Blanks: '), JSON.stringify(results.blanks)),
+                    React.createElement('p', { key: 'markers' }, React.createElement('strong', null, 'Markers: '), React.createElement('pre', null, JSON.stringify(results.markers, null, 2))),
+                ])
+            ]);
+        }
+        
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(React.createElement(DebugClozeComponent));
+    </script>
+</body>
+</html>

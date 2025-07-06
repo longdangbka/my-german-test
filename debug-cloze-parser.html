@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug CLOZE Parser</title>
+</head>
+<body>
+    <h1>Debug CLOZE Parser</h1>
+    <div id="debug-output"></div>
+
+    <script type="module">
+        function parseClozeMarkers(text) {
+            console.log('Input text:', text);
+            const markers = [];
+            let i = 0;
+            
+            while (i < text.length) {
+                // Look for opening braces
+                if (text[i] === '{' && text[i + 1] === '{') {
+                    console.log('Found {{ at position', i);
+                    // Double brace marker {{...}}
+                    const start = i;
+                    i += 2; // Skip opening {{
+                    let content = '';
+                    let braceCount = 1; // We've seen one opening {{
+                    let inLaTeX = false;
+                    
+                    while (i < text.length && braceCount > 0) {
+                        const char = text[i];
+                        
+                        if (char === '$' && !inLaTeX) {
+                            // Starting LaTeX mode
+                            inLaTeX = true;
+                            content += char;
+                            console.log('Entering LaTeX mode at position', i);
+                        } else if (char === '$' && inLaTeX) {
+                            // Ending LaTeX mode
+                            inLaTeX = false;
+                            content += char;
+                            console.log('Exiting LaTeX mode at position', i);
+                        } else if (!inLaTeX && char === '}' && text[i + 1] === '}') {
+                            // End of double brace marker (only if not in LaTeX)
+                            braceCount--;
+                            console.log('Found }} at position', i, 'braceCount now:', braceCount);
+                            if (braceCount === 0) {
+                                i += 2; // Skip closing }}
+                                break;
+                            }
+                        } else {
+                            content += char;
+                        }
+                        i++;
+                    }
+                    
+                    console.log('Final content:', content, 'braceCount:', braceCount);
+                    
+                    if (braceCount === 0) {
+                        markers.push({
+                            match: `{{${content}}}`,
+                            content: content,
+                            start: start,
+                            end: i
+                        });
+                        console.log('Added marker:', `{{${content}}}`);
+                    } else {
+                        // Unmatched braces, treat as regular text
+                        i = start + 1;
+                        console.log('Unmatched braces, skipping');
+                    }
+                } else if (text[i] === '{' && text[i + 1] !== '{') {
+                    // Single brace marker {...}
+                    const start = i;
+                    i += 1; // Skip opening {
+                    let content = '';
+                    let braceCount = 1;
+                    let inLaTeX = false;
+                    
+                    while (i < text.length && braceCount > 0) {
+                        const char = text[i];
+                        
+                        if (char === '$' && !inLaTeX) {
+                            inLaTeX = true;
+                            content += char;
+                        } else if (char === '$' && inLaTeX) {
+                            inLaTeX = false;
+                            content += char;
+                        } else if (!inLaTeX && char === '}') {
+                            braceCount--;
+                            if (braceCount === 0) {
+                                i++;
+                                break;
+                            }
+                        } else {
+                            content += char;
+                        }
+                        i++;
+                    }
+                    
+                    if (braceCount === 0) {
+                        markers.push({
+                            match: `{${content}}`,
+                            content: content,
+                            start: start,
+                            end: i
+                        });
+                    } else {
+                        // Unmatched braces, treat as regular text
+                        i = start + 1;
+                    }
+                } else {
+                    i++;
+                }
+            }
+            
+            console.log('Final markers:', markers);
+            return markers;
+        }
+
+        // Test the exact string from the user
+        const testString = "{{Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.";
+        console.log('Testing string:', testString);
+        
+        const result = parseClozeMarkers(testString);
+        
+        document.getElementById('debug-output').innerHTML = `
+            <h2>Test Result</h2>
+            <p><strong>Input:</strong> ${testString}</p>
+            <p><strong>Found ${result.length} markers:</strong></p>
+            <pre>${JSON.stringify(result, null, 2)}</pre>
+        `;
+        
+        // Test with the exact string from the problem
+        const problemText = "{{Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.";
+        console.log('Testing problem text:', problemText);
+        
+        const problemMarkers = parseClozeMarkers(problemText);
+        console.log('Problem markers found:', problemMarkers);
+        
+        document.getElementById('debug-output').innerHTML += `
+          <hr>
+          <h3>Problem Test:</h3>
+          <p><strong>Input:</strong> ${problemText}</p>
+          <p><strong>Markers found:</strong> ${JSON.stringify(problemMarkers, null, 2)}</p>
+        `;
+        
+        // Test replacement
+        if (problemMarkers.length > 0) {
+          let processedText = problemText;
+          for (let i = problemMarkers.length - 1; i >= 0; i--) {
+            const marker = problemMarkers[i];
+            processedText = processedText.substring(0, marker.start) + '_____' + processedText.substring(marker.end);
+          }
+          
+          document.getElementById('debug-output').innerHTML += `
+            <h3>Problem Test - After Replacement:</h3>
+            <p><strong>Original:</strong> ${problemText}</p>
+            <p><strong>Processed:</strong> ${processedText}</p>
+            <p><strong>Blanks:</strong> ${JSON.stringify(problemMarkers.map(m => m.content))}</p>
+          `;
+        }
+    </script>
+</body>
+</html>

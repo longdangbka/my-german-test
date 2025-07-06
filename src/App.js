@@ -101,7 +101,7 @@ function App() {
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
-  // Auto-fill
+  // Auto-fill and show answers
   const doTestForMe = () => {
     qd.setAnswers(prev => {
       const filled = { ...prev };
@@ -116,7 +116,9 @@ function App() {
       });
       return filled;
     });
-    setTimeout(checkAnswers, 0);
+    setTimeout(() => {
+      checkAnswers();
+    }, 0);
   };
 
   // Only show feedback for the current section
@@ -158,7 +160,6 @@ function App() {
           quizName={selectedTest}
         />
       <TestControls
-        onCheck={checkAnswers}
         onShow={doTestForMe}
         onReset={() => {
           qd.resetAll();

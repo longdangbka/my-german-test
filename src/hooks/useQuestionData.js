@@ -12,6 +12,7 @@ export default function useQuestionData(selectedTestFile = null) {
   const abortController = useRef();
 
   const initialize = useCallback(async (filename) => {
+    console.log('🔍 useQuestionData - Initialize called with filename:', filename);
     setLoading(true);
     setError(null);
     
@@ -24,7 +25,9 @@ export default function useQuestionData(selectedTestFile = null) {
     if (abortController.current) abortController.current.abort();
     abortController.current = new AbortController();
     try {
+      console.log('🔍 useQuestionData - About to call loadQuestionGroups');
       const loaded = await loadQuestionGroups(abortController.current.signal, filename);
+      console.log('🔍 useQuestionData - Loaded question groups:', loaded);
       setGroups(loaded);
       let a = {}, f = {};
       loaded.forEach(g => g.questions.forEach(q => {
