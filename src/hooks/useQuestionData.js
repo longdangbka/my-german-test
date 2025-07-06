@@ -59,6 +59,18 @@ export default function useQuestionData(selectedTestFile = null) {
   const forceRefresh = () => {
     // Force a complete refresh by clearing state and reinitializing
     console.log('Force refreshing question data...');
+    
+    // Clear all state immediately
+    setGroups([]);
+    setAnswers({});
+    setFeedback({});
+    setCurrentIndex(0);
+    setError(null);
+    
+    // Abort any ongoing requests
+    if (abortController.current) abortController.current.abort();
+    
+    // Re-initialize with fresh data
     initialize(selectedTestFile);
   };
   const goNext = () => setCurrentIndex(i => Math.min(groups.length - 1, i + 1));

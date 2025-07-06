@@ -33,7 +33,8 @@
     "dist-portable": "electron-builder --win --publish=never",
     "dist-portable-full": "npm run build && electron-builder --win --publish=never",
     "dist-dev": "electron-builder --dir",
-    "dist-dev-fast": "electron-builder --dir --config.win.sign=false",
+    "dist-dev-fast": "electron-builder --dir --config.compression=store --config.win.forceCodeSigning=false",
+    "dist-dev-ultra": "electron-builder --dir --config.compression=store --config.win.forceCodeSigning=false --config.asar=false",
     "dist-all": "npm run build && electron-builder --win --mac --linux",
     "update-quizzes": "node scripts/auto-generate-manifest.js"
   },
@@ -60,25 +61,22 @@
     "productName": "My German Test",
     "copyright": "Copyright © 2025 My German Test",
     "extends": null,
+    "compression": "store",
+    "removePackageKeywords": true,
     "directories": {
       "output": "dist",
       "buildResources": "assets"
     },
     "files": [
-      "build/**/*",
+      "build/static/css/*.css",
+      "build/static/js/*.js",
+      "build/static/media/**/*",
+      "build/index.html",
+      "build/manifest.json",
+      "build/favicon.ico",
       "main.js",
       "preload.js",
-      "package.json",
-      "!**/*.ts",
-      "!**/*.map",
-      "!build/**/*.map",
-      "!node_modules",
-      "!src",
-      "!public",
-      "!scripts",
-      "!**/.git*",
-      "!**/.*",
-      "!**/*.log"
+      "package.json"
     ],
     "extraResources": [
       {

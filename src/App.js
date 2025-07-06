@@ -5,6 +5,7 @@ import QuestionList from './components/QuestionList';
 import TestControls from './components/TestControls';
 import Navigation from './components/Navigation';
 import TestSelector from './components/TestSelector';
+import TextWithLatex from './components/TextWithLatex';
 
 function App() {
   const [selectedTest, setSelectedTest] = useState(null);
@@ -136,7 +137,7 @@ function App() {
             Back to Quiz Selection
           </button>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            {qd.currentGroup.title}
+            <TextWithLatex>{qd.currentGroup.title}</TextWithLatex>
           </h2>
           <button
             onClick={toggleTheme}

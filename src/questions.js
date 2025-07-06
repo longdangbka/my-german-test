@@ -11,10 +11,12 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
     if (window.electron && window.electron.readVaultFile) {
       // Force fresh read by including timestamp
       const timestamp = Date.now();
+      console.log(`[Electron] Reading ${filename} with timestamp ${timestamp}`);
       text = await window.electron.readVaultFile(filename, timestamp);
       if (!text) {
         throw new Error(`Failed to load ${filename} via IPC`);
       }
+      console.log(`[Electron] Successfully loaded ${filename} (${text.length} characters)`);
     } else {
       // Web environment - use fetch
       let vaultPath = '/vault/';
@@ -24,6 +26,7 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
       
       // Add cache-busting parameter to ensure fresh content
       const cacheBuster = Date.now();
+      console.log(`[Web] Reading ${filename} with cache buster ${cacheBuster}`);
       const res = await fetch(vaultPath + filename + '?v=' + cacheBuster, { 
         signal,
         cache: 'no-cache', // Disable caching
@@ -37,6 +40,7 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
         throw new Error(`Failed to fetch ${filename}: ${res.status}`);
       }
       text = await res.text();
+      console.log(`[Web] Successfully loaded ${filename} (${text.length} characters)`);
     }
     
     const parsed = parseStandardMarkdown(text);

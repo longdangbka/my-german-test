@@ -5,22 +5,19 @@ appId: com.example.my-german-test
 productName: My German Test
 copyright: Copyright © 2025 My German Test
 extends: null
+compression: store
+removePackageKeywords: true
 files:
   - filter:
-      - build/**/*
+      - build/static/css/*.css
+      - build/static/js/*.js
+      - build/static/media/**/*
+      - build/index.html
+      - build/manifest.json
+      - build/favicon.ico
       - main.js
       - preload.js
       - package.json
-      - '!**/*.ts'
-      - '!**/*.map'
-      - '!build/**/*.map'
-      - '!node_modules'
-      - '!src'
-      - '!public'
-      - '!scripts'
-      - '!**/.git*'
-      - '!**/.*'
-      - '!**/*.log'
 extraResources:
   - from: public/audios
     to: audios
@@ -49,4 +46,5 @@ mac:
   target: dmg
 linux:
   target: AppImage
+asar: false
 electronVersion: 37.2.0
