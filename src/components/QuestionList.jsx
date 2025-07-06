@@ -1,7 +1,7 @@
 import React from 'react';
 import { questionTypes } from '../questionTypes';
 
-export default function QuestionList({ questions, answers, feedback, onChange, showFeedback, seqStart = 1 }) {
+export default function QuestionList({ questions, answers, feedback, onChange, showFeedback, seqStart = 1, quizName }) {
   let seq = seqStart;
   return (
     <div className="space-y-4">
@@ -17,6 +17,7 @@ export default function QuestionList({ questions, answers, feedback, onChange, s
             onChange={onChange}
             showFeedback={showFeedback}
             seq={seq++}
+            quizName={quizName}
           />
         );
       })}

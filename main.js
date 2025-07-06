@@ -5,10 +5,14 @@ const isDev = process.env.ELECTRON_IS_DEV === 'true';
 
 // Enable live reload for Electron in development
 if (isDev) {
-  require('electron-reload')(__dirname, {
-    electron: path.join(__dirname, '..', 'node_modules', '.bin', 'electron'),
-    hardResetMethod: 'exit'
-  });
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, 'node_modules', '.bin', 'electron.cmd'),
+      hardResetMethod: 'exit'
+    });
+  } catch (e) {
+    console.log('Electron reload not available:', e.message);
+  }
 }
 
 // Register IPC handlers once when app is ready
@@ -28,25 +32,51 @@ function registerIpcHandlers() {
   });
 
   // Handle vault file requests
-  ipcMain.handle('vault:read-file', async (event, filename) => {
-    try {
-      let vaultPath;
-      if (isDev) {
-        vaultPath = path.join(__dirname, 'public', 'vault');
-      } else {
-        vaultPath = path.join(process.resourcesPath, 'vault');
-      }
+  // Helper function to find vault path
+  function getVaultPath() {
+    let vaultPath;
+    if (isDev) {
+      vaultPath = path.join(__dirname, 'public', 'vault');
+    } else {
+      vaultPath = path.join(process.resourcesPath, 'vault');
+    }
+    
+    if (!fs.existsSync(vaultPath)) {
+      // Try alternative paths
+      const altPaths = [
+        path.join(__dirname, 'vault'),
+        path.join(__dirname, 'public', 'vault'),
+        path.join(__dirname, '..', 'vault'),
+        path.join(process.cwd(), 'vault')
+      ];
       
+      for (const altPath of altPaths) {
+        if (fs.existsSync(altPath)) {
+          vaultPath = altPath;
+          break;
+        }
+      }
+    }
+    
+    return vaultPath;
+  }
+
+  ipcMain.handle('vault:read-file', async (event, filename, timestamp = null) => {
+    try {
+      const vaultPath = getVaultPath();
       const filePath = path.join(vaultPath, filename);
-      console.log('Reading vault file:', filePath);
       
       if (!fs.existsSync(filePath)) {
         console.error(`File not found: ${filename} at ${filePath}`);
         return null;
       }
       
+      // Always read fresh content, no caching
       const content = fs.readFileSync(filePath, 'utf-8');
-      console.log(`Successfully read file ${filename}, content length: ${content.length}`);
+      const stats = fs.statSync(filePath);
+      
+      console.log(`Read file ${filename} (${content.length} chars) - modified: ${stats.mtime.toISOString()}, request timestamp: ${timestamp || 'not provided'}`);
+      
       return content;
     } catch (error) {
       console.error('Error reading vault file:', error);
@@ -57,15 +87,8 @@ function registerIpcHandlers() {
   // Handle vault image requests - return as base64 data URL
   ipcMain.handle('vault:read-image', async (event, filename) => {
     try {
-      let vaultPath;
-      if (isDev) {
-        vaultPath = path.join(__dirname, 'public', 'vault');
-      } else {
-        vaultPath = path.join(process.resourcesPath, 'vault');
-      }
-      
+      const vaultPath = getVaultPath();
       const filePath = path.join(vaultPath, filename);
-      console.log('Reading vault image:', filePath);
       
       if (!fs.existsSync(filePath)) {
         console.error(`Image not found: ${filename} at ${filePath}`);
@@ -105,40 +128,13 @@ function registerIpcHandlers() {
   // Handle vault file listing with metadata
   ipcMain.handle('vault:list-files', async () => {
     try {
-      let vaultPath;
-      if (isDev) {
-        vaultPath = path.join(__dirname, 'public', 'vault');
-      } else {
-        vaultPath = path.join(process.resourcesPath, 'vault');
-      }
+      const vaultPath = getVaultPath();
       
       console.log('Listing vault files from:', vaultPath);
-      console.log('isDev:', isDev);
-      console.log('process.resourcesPath:', process.resourcesPath);
       
       if (!fs.existsSync(vaultPath)) {
-        console.error('Vault directory does not exist:', vaultPath);
-        // Try alternative paths
-        const altPaths = [
-          path.join(__dirname, 'vault'),
-          path.join(__dirname, 'public', 'vault'),
-          path.join(__dirname, '..', 'vault'),
-          path.join(process.cwd(), 'vault')
-        ];
-        
-        for (const altPath of altPaths) {
-          console.log('Trying alternative path:', altPath);
-          if (fs.existsSync(altPath)) {
-            console.log('Found vault at alternative path:', altPath);
-            vaultPath = altPath;
-            break;
-          }
-        }
-        
-        if (!fs.existsSync(vaultPath)) {
-          console.error('Could not find vault directory in any location');
-          return [];
-        }
+        console.error('Could not find vault directory in any location');
+        return [];
       }
       
       const files = fs.readdirSync(vaultPath);
@@ -175,6 +171,50 @@ function registerIpcHandlers() {
       return [];
     }
   });
+
+  // Handle writing bookmarks to vault
+  ipcMain.handle('vault:write-file', async (event, filename, content) => {
+    try {
+      let vaultPath;
+      if (isDev) {
+        vaultPath = path.join(__dirname, 'public', 'vault');
+      } else {
+        vaultPath = path.join(process.resourcesPath, 'vault');
+      }
+      
+      // If the primary path doesn't exist, try alternative paths
+      if (!fs.existsSync(vaultPath)) {
+        const altPaths = [
+          path.join(__dirname, 'vault'),
+          path.join(__dirname, 'public', 'vault'),
+          path.join(__dirname, '..', 'vault'),
+          path.join(process.cwd(), 'vault')
+        ];
+        
+        for (const altPath of altPaths) {
+          if (fs.existsSync(altPath)) {
+            vaultPath = altPath;
+            break;
+          }
+        }
+        
+        // If still no vault directory exists, create it
+        if (!fs.existsSync(vaultPath)) {
+          fs.mkdirSync(vaultPath, { recursive: true });
+        }
+      }
+      
+      const filePath = path.join(vaultPath, filename);
+      console.log('Writing vault file:', filePath);
+      
+      fs.writeFileSync(filePath, content, 'utf-8');
+      console.log(`Successfully wrote file ${filename}, content length: ${content.length}`);
+      return true;
+    } catch (error) {
+      console.error('Error writing vault file:', error);
+      return false;
+    }
+  });
 }
 
 function createWindow() {
@@ -196,7 +236,7 @@ function createWindow() {
 
   // Load the React app
   if (isDev) {
-    win.loadURL('http://localhost:3001');
+    win.loadURL('http://localhost:3002');
     win.webContents.openDevTools();
   } else {
     win.loadFile(path.join(__dirname, 'build', 'index.html'));

@@ -1,8 +1,8 @@
 import React from 'react';
 
-export default function TestControls({ onCheck, onShow, onReset, allAnswered }) {
+export default function TestControls({ onCheck, onShow, onReset, onRefresh, allAnswered }) {
   return (
-    <div className="flex space-x-3">
+    <div className="flex space-x-3 flex-wrap gap-2">
       <button
         onClick={onCheck}
         disabled={!allAnswered}
@@ -22,6 +22,15 @@ export default function TestControls({ onCheck, onShow, onReset, allAnswered }) 
       >
         🔄 Reset
       </button>
+      {onRefresh && (
+        <button 
+          onClick={onRefresh} 
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded-lg transition-all duration-200 shadow-sm"
+          title="Reload content from file"
+        >
+          📄 Refresh Content
+        </button>
+      )}
     </div>
   );
 }

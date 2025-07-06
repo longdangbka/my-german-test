@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
   readVaultFile: (filename) => ipcRenderer.invoke('vault:read-file', filename),
   readVaultImage: (filename) => ipcRenderer.invoke('vault:read-image', filename),
   listVaultFiles: () => ipcRenderer.invoke('vault:list-files'),
+  writeVaultFile: (filename, content) => ipcRenderer.invoke('vault:write-file', filename, content),
   
   // Platform information
   platform: process.platform,

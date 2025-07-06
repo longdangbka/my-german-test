@@ -1,6 +1,7 @@
 import React from 'react';
 import '../answer-contrast.css';
 import VaultImage from '../components/VaultImage.jsx';
+import BookmarkButton from '../components/BookmarkButton.jsx';
 import CodeBlock from './CodeBlock';
 import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
@@ -119,10 +120,10 @@ function renderWithInlineLatex(text) {
   return parts;
 }
 
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
-      <div className="flex items-center space-x-4">
+      <div className="flex items-start space-x-4">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
           {/* Render content in original order */}
           {renderOrderedElements(q.orderedElements || [])}
@@ -133,16 +134,23 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
             </div>
           )}
         </div>
-        <select name={q.id} value={value} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
-          <option value="">– Select –</option>
-          <option value="R">✓ Richtig</option>
-          <option value="F">✗ Falsch</option>
-        </select>
-        {showFeedback && (
-          <span className={feedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-            {feedback === 'correct' ? '✅' : '❌'}
-          </span>
-        )}
+        <div className="flex items-center space-x-2">
+          <BookmarkButton 
+            question={q} 
+            quizName={quizName} 
+            questionIndex={seq} 
+          />
+          <select name={q.id} value={value} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
+            <option value="">– Select –</option>
+            <option value="R">✓ Richtig</option>
+            <option value="F">✗ Falsch</option>
+          </select>
+          {showFeedback && (
+            <span className={feedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+              {feedback === 'correct' ? '✅' : '❌'}
+            </span>
+          )}
+        </div>
       </div>
       
       {/* Fallback rendering for old format (images, code blocks, tables separately) */}

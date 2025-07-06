@@ -9,8 +9,9 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
     
     // Check if we're in an Electron environment
     if (window.electron && window.electron.readVaultFile) {
-      console.log('Loading question file via Electron IPC:', filename);
-      text = await window.electron.readVaultFile(filename);
+      // Force fresh read by including timestamp
+      const timestamp = Date.now();
+      text = await window.electron.readVaultFile(filename, timestamp);
       if (!text) {
         throw new Error(`Failed to load ${filename} via IPC`);
       }
@@ -21,7 +22,17 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
         vaultPath = window.location.origin + '/vault/';
       }
       
-      const res = await fetch(vaultPath + filename, { signal });
+      // Add cache-busting parameter to ensure fresh content
+      const cacheBuster = Date.now();
+      const res = await fetch(vaultPath + filename + '?v=' + cacheBuster, { 
+        signal,
+        cache: 'no-cache', // Disable caching
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        }
+      });
       if (!res.ok) {
         throw new Error(`Failed to fetch ${filename}: ${res.status}`);
       }
@@ -324,7 +335,7 @@ function mdTableToHtml(md) {
 
 function parseStandardMarkdown(md) {
   const groups = [];
-  const headingRE = /^### Aufgabe\s*(.+).*$/gm;
+  const headingRE = /^##\s+(.+)$/gm;
   const headings  = Array.from(md.matchAll(headingRE));
 
   for (let i = 0; i < headings.length; i++) {
@@ -336,11 +347,11 @@ function parseStandardMarkdown(md) {
                 : md.length;
     const block = md.slice(start, end);
 
-    console.log(`Processing Aufgabe ${num}`);
+    console.log(`Processing section: ${num}`);
 
-    // — Extract the raw transcript up to "#### Questions"
+    // — Extract the raw transcript up to "### Questions"
     const tMatch = block.match(
-      /#### Transcript\s*[\r\n]+([\s\S]*?)(?=#### Questions|$)/i
+      /### Transcript\s*[\r\n]+([\s\S]*?)(?=### Questions|$)/i
     );
     let transcript = '';
     let transcriptElements = { images: [], codeBlocks: [], latexBlocks: [], htmlTables: [] };
@@ -362,9 +373,9 @@ function parseStandardMarkdown(md) {
       };
     }
 
-    // — Everything after "#### Questions"
+    // — Everything after "### Questions"
     const qMatch = block.match(
-      /#### Questions\s*[\r\n]+([\s\S]*)/i
+      /### Questions\s*[\r\n]+([\s\S]*)/i
     );
     const questionsSection = qMatch ? qMatch[1] : '';
 
@@ -389,7 +400,7 @@ function parseStandardMarkdown(md) {
         const type  = typeM ? typeM[1].toUpperCase() : null;
 
         if (!type) {
-          console.warn(`No type found for question ${idx + 1} in Aufgabe ${num}`);
+          console.warn(`No type found for question ${idx + 1} in section ${num}`);
           return null;
         }
         
@@ -549,7 +560,7 @@ function parseStandardMarkdown(md) {
       }
       return null;
     } catch (error) {
-      console.error(`Error parsing question ${idx + 1} in Aufgabe ${num}:`, error);
+      console.error(`Error parsing question ${idx + 1} in section ${num}:`, error);
       return null;
     }
     }).filter(Boolean);

@@ -14,6 +14,13 @@ export default function useQuestionData(selectedTestFile = null) {
   const initialize = useCallback(async (filename) => {
     setLoading(true);
     setError(null);
+    
+    // Clear all existing state to ensure fresh data
+    setGroups([]);
+    setAnswers({});
+    setFeedback({});
+    setCurrentIndex(0);
+    
     if (abortController.current) abortController.current.abort();
     abortController.current = new AbortController();
     try {
@@ -49,6 +56,11 @@ export default function useQuestionData(selectedTestFile = null) {
   }, [initialize, selectedTestFile]);
 
   const resetAll = () => initialize(selectedTestFile);
+  const forceRefresh = () => {
+    // Force a complete refresh by clearing state and reinitializing
+    console.log('Force refreshing question data...');
+    initialize(selectedTestFile);
+  };
   const goNext = () => setCurrentIndex(i => Math.min(groups.length - 1, i + 1));
   const goPrev = () => setCurrentIndex(i => Math.max(0, i - 1));
 
@@ -63,6 +75,7 @@ export default function useQuestionData(selectedTestFile = null) {
     loading,
     error,
     resetAll,
+    forceRefresh,
     goNext,
     goPrev,
   };

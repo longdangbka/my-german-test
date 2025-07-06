@@ -24,6 +24,24 @@ function App() {
     }
   }, [theme]);
 
+  // Add keyboard shortcut for refreshing content
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Ctrl+R or F5 - refresh content (prevent default browser refresh)
+      if ((event.ctrlKey && event.key === 'r') || event.key === 'F5') {
+        if (selectedTest) {
+          event.preventDefault();
+          console.log('Keyboard shortcut: Refreshing content...');
+          qd.forceRefresh();
+          setShowFeedback({});
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedTest, qd]);
+
   const toggleTheme = () => {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
@@ -135,14 +153,20 @@ function App() {
           answers={qd.answers}
           feedback={qd.feedback}
           onChange={e => qd.setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
-        showFeedback={showCurrentFeedback}
-      />
+          showFeedback={showCurrentFeedback}
+          quizName={selectedTest}
+        />
       <TestControls
         onCheck={checkAnswers}
         onShow={doTestForMe}
         onReset={() => {
           qd.resetAll();
           setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: false }));
+        }}
+        onRefresh={() => {
+          console.log('Refreshing content...');
+          qd.forceRefresh();
+          setShowFeedback({}); // Clear all feedback
         }}
         allAnswered={allAnswered}
       />

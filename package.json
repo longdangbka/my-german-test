@@ -20,14 +20,20 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "cross-env PORT=3001 react-scripts start",
+    "start": "cross-env PORT=3002 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron .",
     "electron-dev": "cross-env ELECTRON_IS_DEV=true electron .",
+    "clean": "rimraf dist",
     "dist": "npm run build && electron-builder",
-    "dist-win": "npm run build && electron-builder --win",
+    "dist-win": "electron-builder --win",
+    "dist-win-full": "npm run build && electron-builder --win",
+    "dist-portable": "electron-builder --win --publish=never",
+    "dist-portable-full": "npm run build && electron-builder --win --publish=never",
+    "dist-dev": "electron-builder --dir",
+    "dist-dev-fast": "electron-builder --dir --config.win.sign=false",
     "dist-all": "npm run build && electron-builder --win --mac --linux",
     "update-quizzes": "node scripts/auto-generate-manifest.js"
   },
@@ -64,7 +70,15 @@
       "preload.js",
       "package.json",
       "!**/*.ts",
-      "!**/*.map"
+      "!**/*.map",
+      "!build/**/*.map",
+      "!node_modules",
+      "!src",
+      "!public",
+      "!scripts",
+      "!**/.git*",
+      "!**/.*",
+      "!**/*.log"
     ],
     "extraResources": [
       {
@@ -81,15 +95,13 @@
         {
           "target": "nsis",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         },
         {
           "target": "portable",
           "arch": [
-            "x64",
-            "ia32"
+            "x64"
           ]
         }
       ],
@@ -117,6 +129,7 @@
   "devDependencies": {
     "electron": "^37.2.0",
     "electron-builder": "^26.0.12",
-    "electron-reload": "^2.0.0-alpha.1"
+    "electron-reload": "^2.0.0-alpha.1",
+    "rimraf": "^6.0.1"
   }
 }

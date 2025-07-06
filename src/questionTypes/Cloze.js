@@ -1,6 +1,7 @@
 import React from 'react';
 import '../answer-contrast.css';
 import VaultImage from '../components/VaultImage.jsx';
+import BookmarkButton from '../components/BookmarkButton.jsx';
 import CodeBlock from './CodeBlock';
 import LatexBlock from './LatexBlock';
 import TableWithLatex from './TableWithLatex';
@@ -19,18 +20,27 @@ export function initFeedback(q) {
   });
   return out;
 }
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
   // Use the new ordered elements approach for questions without blanks
   if (!q.blanks || q.blanks.length === 0) {
     return (
-      <div className="question-block">
-        {renderOrderedElements(q.orderedElements || [])}
-        {showFeedback && q.explanation && (
-          <div className="mt-2 text-sm text-gray-600">
-            <strong>Erklärung:</strong>
-            {renderOrderedElements(q.explanationOrderedElements || [])}
+      <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            {renderOrderedElements(q.orderedElements || [])}
+            {showFeedback && q.explanation && (
+              <div className="mt-2 text-sm text-gray-600">
+                <strong>Erklärung:</strong>
+                {renderOrderedElements(q.explanationOrderedElements || [])}
+              </div>
+            )}
           </div>
-        )}
+          <BookmarkButton 
+            question={q} 
+            quizName={quizName} 
+            questionIndex={seq} 
+          />
+        </div>
       </div>
     );
   }
@@ -38,9 +48,16 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq }) {
   // For cloze questions with blanks, render all content in order
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
-      <div className="text-gray-900 dark:text-gray-100">
-        {/* Render all content elements in original order */}
-        {renderOrderedElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
+      <div className="flex items-start justify-between">
+        <div className="flex-1 text-gray-900 dark:text-gray-100">
+          {/* Render all content elements in original order */}
+          {renderOrderedElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
+        </div>
+        <BookmarkButton 
+          question={q} 
+          quizName={quizName} 
+          questionIndex={seq} 
+        />
       </div>
       
       {showFeedback && q.explanation && (
