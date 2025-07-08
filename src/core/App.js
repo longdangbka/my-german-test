@@ -5,6 +5,7 @@ import QuestionList from '../modules/questions/components/QuestionList';
 import TestControls from '../modules/testing/components/TestControls';
 import Navigation from '../modules/navigation/Navigation';
 import TestSelector from '../modules/testing/components/TestSelector';
+import BookmarksViewer from '../modules/bookmarks/BookmarksViewer';
 import { renderSimpleLatex } from '../shared/utils/simpleLatexRenderer';
 import '../assets/styles/inline-latex.css';
 
@@ -12,7 +13,6 @@ function App() {
   const [selectedTest, setSelectedTest] = useState(null);
   const [theme, setTheme] = useState('light');
   
-  const qd = useQuestionData(selectedTest);
   // Use an object to store showFeedback per section
   const [showFeedback, setShowFeedback] = useState({});
 
@@ -26,12 +26,29 @@ function App() {
     }
   }, [theme]);
 
+  const handleTestSelect = (filename) => {
+    setSelectedTest(filename);
+    setShowFeedback({}); // Reset feedback when switching tests
+  };
+
+  const handleBackToTestSelection = () => {
+    console.log('🔍 Back button clicked');
+    setSelectedTest(null);
+    setShowFeedback({});
+  };
+
+  // Check if the current test is bookmarks
+  const isBookmarksView = selectedTest === 'bookmarks.md';
+  
+  // Don't load question data for bookmarks - let BookmarksViewer handle it
+  const qd = useQuestionData(isBookmarksView ? null : selectedTest);
+
   // Add keyboard shortcut for refreshing content
   useEffect(() => {
     const handleKeyDown = (event) => {
       // Ctrl+R or F5 - refresh content (prevent default browser refresh)
       if ((event.ctrlKey && event.key === 'r') || event.key === 'F5') {
-        if (selectedTest) {
+        if (selectedTest && qd) {
           event.preventDefault();
           console.log('Keyboard shortcut: Refreshing content...');
           qd.forceRefresh();
@@ -48,17 +65,6 @@ function App() {
     setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
   };
 
-  const handleTestSelect = (filename) => {
-    setSelectedTest(filename);
-    setShowFeedback({}); // Reset feedback when switching tests
-  };
-
-  const handleBackToTestSelection = () => {
-    console.log('🔍 Back button clicked');
-    setSelectedTest(null);
-    setShowFeedback({});
-  };
-
   // If no test is selected, show the test selector
   if (!selectedTest) {
     return (
@@ -68,6 +74,11 @@ function App() {
         toggleTheme={toggleTheme}
       />
     );
+  }
+
+  // Show BookmarksViewer for bookmarks.md
+  if (isBookmarksView) {
+    return <BookmarksViewer onBack={handleBackToTestSelection} theme={theme} toggleTheme={toggleTheme} />;
   }
 
   if (qd.error) return <div className="p-8 text-center text-red-600">{qd.error}</div>;

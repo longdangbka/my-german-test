@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import QuestionList from './QuestionList';
-import TestControls from './TestControls';
+import QuestionList from '../questions/components/QuestionList';
+import TestControls from '../testing/components/TestControls';
+import { parseClozeMarkers } from '../../shared/constants/index.js'; // Import the parsing function
 
 const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
   const [bookmarks, setBookmarks] = useState([]);
@@ -54,6 +55,142 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
     }
   };
 
+  // Helper function to parse content with full markdown support
+  const parseContentWithOrder = (text, isCloze = false) => {
+    if (!text) return { elements: [], latexPlaceholders: [] };
+
+    const elements = [];
+    let remaining = text;
+
+    // Create a list of all content patterns with their positions
+    const patterns = [
+      { type: 'image', regex: /!\[\[([^\]]+)\]\]/g },
+      { type: 'codeBlock', regex: /```([\w-]*)\r?\n([\s\S]*?)```/g },
+      { type: 'table', regex: /(^\|.+\|\r?\n\|[- :|]+\|\r?\n(?:\|.*\|\r?\n?)+)/gm },
+      { type: 'latexDisplay', regex: /\$\$([\s\S]+?)\$\$/g },
+      { type: 'latexInline', regex: /\$([^$\n]+?)\$/g }
+    ];
+
+    // Find all matches with their positions
+    const allMatches = [];
+    
+    patterns.forEach(pattern => {
+      let match;
+      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+      while ((match = regex.exec(remaining)) !== null) {
+        allMatches.push({
+          type: pattern.type,
+          match: match,
+          start: match.index,
+          end: match.index + match[0].length,
+          content: match[0]
+        });
+      }
+    });
+
+    // Sort by position and remove overlapping matches
+    allMatches.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
+    
+    const nonOverlappingMatches = [];
+    for (const currentMatch of allMatches) {
+      const hasOverlap = nonOverlappingMatches.some(existing => 
+        (currentMatch.start < existing.end && currentMatch.end > existing.start)
+      );
+      if (!hasOverlap) {
+        nonOverlappingMatches.push(currentMatch);
+      }
+    }
+
+    // Sort again by position for processing
+    nonOverlappingMatches.sort((a, b) => a.start - b.start);
+
+    // Process matches in order, extracting text between them
+    let currentPos = 0;
+
+    nonOverlappingMatches.forEach(({ type, match, start, end }) => {
+      // Add text before this match
+      if (start > currentPos) {
+        const textBefore = remaining.slice(currentPos, start).trim();
+        if (textBefore) {
+          elements.push({ type: 'text', content: textBefore });
+        }
+      }
+
+      // Add the matched element
+      switch (type) {
+        case 'image':
+          elements.push({ type: 'image', content: match[1] });
+          break;
+        case 'codeBlock':
+          elements.push({ type: 'codeBlock', content: { lang: match[1] || 'text', code: match[2] } });
+          break;
+        case 'table':
+          elements.push({ type: 'table', content: match[0] });
+          break;
+        case 'latexDisplay':
+          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'display' } });
+          break;
+        case 'latexInline':
+          elements.push({ type: 'latex', content: { latex: match[1], latexType: 'inline' } });
+          break;
+      }
+
+      currentPos = end;
+    });
+
+    // Add remaining text
+    if (currentPos < remaining.length) {
+      const remainingText = remaining.slice(currentPos).trim();
+      if (remainingText) {
+        elements.push({ type: 'text', content: remainingText });
+      }
+    }
+
+    return { elements, latexPlaceholders: [] };
+  };
+
+  // Helper function to convert markdown table to HTML
+  const mdTableToHtml = (md) => {
+    // Split lines, remove any empty ones
+    const lines = md.split(/\r?\n/).filter(l => l.trim());
+    if (lines.length < 2) return '';
+    
+    // Header row
+    const headers = lines[0]
+      .trim()
+      .split('|')
+      .slice(1, -1)
+      .map(h => h.trim());
+    
+    // Data rows start after the separator line
+    const rows = lines
+      .slice(2)
+      .map(line =>
+        line
+          .trim()
+          .split('|')
+          .slice(1, -1)
+          .map(cell => cell.trim())
+      );
+
+    let html = '<table style="border-collapse: collapse; border: 1px solid black; width: 100%; text-align: left; font-size: 14px;">';
+    html += '<thead style="background-color: #f2f2f2;"><tr>';
+    headers.forEach(h => {
+      html += `<th style="border: 1px solid black; padding: 10px;">${h}</th>`;
+    });
+    html += '</tr></thead><tbody>';
+
+    rows.forEach(cells => {
+      html += '<tr>';
+      cells.forEach(c => {
+        html += `<td style="border: 1px solid black; padding: 10px;">${c}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+    return html;
+  };
+
   const parseBookmarksFile = (content) => {
     const questions = [];
     
@@ -67,14 +204,25 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
         const metadata = parts[1].trim();
         
         // Parse question content
-        const lines = questionContent.split('\n').filter(line => line.trim());
+        const lines = questionContent.split('\n'); // Don't filter out empty lines yet
         const question = {
           id: `bookmark_${index}`,
           type: 'T-F',
           text: '',
           answer: '',
           explanation: '',
-          blanks: []
+          blanks: [],
+          // New properties for full content support
+          orderedElements: [],
+          explanationOrderedElements: [],
+          images: [],
+          codeBlocks: [],
+          latexBlocks: [],
+          htmlTables: [],
+          explanationImages: [],
+          explanationCodeBlocks: [],
+          explanationLatexBlocks: [],
+          explanationHtmlTables: []
         };
         
         let currentSection = '';
@@ -85,10 +233,18 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           const trimmed = line.trim();
           if (trimmed.startsWith('TYPE:')) {
             question.type = trimmed.substring(5).trim();
-          } else if (trimmed === 'Q:') {
+          } else if (trimmed.startsWith('Q:')) {
             currentSection = 'question';
-          } else if (trimmed.startsWith('ANSWER:')) {
-            const answerText = trimmed.substring(7).trim();
+            // If there's content after Q: on the same line, include it
+            const questionStart = trimmed.substring(2).trim();
+            if (questionStart) {
+              textLines.push(questionStart);
+            }
+          } else if (trimmed.startsWith('ANSWER:') || trimmed.startsWith('A:')) {
+            // Handle both old format (A:) and new format (ANSWER:)
+            const answerText = trimmed.startsWith('ANSWER:') 
+              ? trimmed.substring(7).trim()
+              : trimmed.substring(2).trim();
             if (question.type === 'CLOZE') {
               // For CLOZE questions, split answers by comma
               question.blanks = answerText.split(',').map(a => a.trim());
@@ -96,17 +252,138 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
               question.answer = answerText;
             }
             currentSection = '';
-          } else if (trimmed === 'E:') {
+          } else if (trimmed.startsWith('E:')) {
             currentSection = 'explanation';
-          } else if (currentSection === 'question' && trimmed) {
-            textLines.push(trimmed);
-          } else if (currentSection === 'explanation' && trimmed) {
-            explanationLines.push(trimmed);
+            // If there's content after E: on the same line, include it
+            const explanationStart = trimmed.substring(2).trim();
+            if (explanationStart) {
+              explanationLines.push(explanationStart);
+            }
+          } else if (currentSection === 'question') {
+            // Add all content, preserving original formatting
+            textLines.push(line);
+          } else if (currentSection === 'explanation') {
+            // Add all content, preserving original formatting
+            explanationLines.push(line);
           }
         });
         
-        question.text = textLines.join('\n');
-        question.explanation = explanationLines.join('\n');
+        const questionText = textLines.join('\n');
+        const explanationText = explanationLines.join('\n');
+        
+        // Parse question content with full markdown support
+        if (questionText) {
+          const { elements } = parseContentWithOrder(questionText, question.type === 'CLOZE');
+          question.orderedElements = elements;
+          
+          // Build cleaned text (similar to main parser)
+          let cleanedText = '';
+          elements.forEach(element => {
+            if (element.type === 'text' || element.type === 'latexPlaceholder') {
+              cleanedText += element.content + ' ';
+            }
+          });
+          question.text = cleanedText.trim();
+          
+          // Process cloze markers if it's a cloze question
+          if (question.type === 'CLOZE') {
+            const clozeMarkers = parseClozeMarkers(questionText);
+            if (clozeMarkers.length > 0 && !question.blanks.length) {
+              question.blanks = clozeMarkers.map(marker => marker.content);
+            }
+            
+            // Replace cloze markers with blanks in text elements
+            question.orderedElements = elements.map(element => {
+              if (element.type === 'text') {
+                let processedContent = element.content;
+                const elementMarkers = parseClozeMarkers(processedContent);
+                // Replace from end to start to maintain positions
+                for (let i = elementMarkers.length - 1; i >= 0; i--) {
+                  const marker = elementMarkers[i];
+                  processedContent = processedContent.slice(0, marker.start) + '_____' + processedContent.slice(marker.end);
+                }
+                return { ...element, content: processedContent };
+              } else if (element.type === 'table') {
+                // Convert table to HTML for rendering
+                return { ...element, content: mdTableToHtml(element.content) };
+              }
+              return element;
+            });
+          } else {
+            // For non-cloze questions, convert tables to HTML
+            question.orderedElements = elements.map(element => {
+              if (element.type === 'table') {
+                return { ...element, content: mdTableToHtml(element.content) };
+              }
+              return element;
+            });
+          }
+          
+          // Extract legacy properties for backwards compatibility
+          elements.forEach(element => {
+            switch (element.type) {
+              case 'image':
+                question.images.push(element.content);
+                break;
+              case 'codeBlock':
+                question.codeBlocks.push(element.content);
+                break;
+              case 'table':
+                question.htmlTables.push(mdTableToHtml(element.content));
+                break;
+              case 'latex':
+                if (element.content?.latexType === 'display') {
+                  question.latexBlocks.push(element.content.latex);
+                }
+                break;
+            }
+          });
+          
+        } else {
+          question.text = '';
+        }
+        
+        // Parse explanation content with full markdown support
+        if (explanationText) {
+          const { elements } = parseContentWithOrder(explanationText, false);
+          question.explanationOrderedElements = elements.map(element => {
+            if (element.type === 'table') {
+              return { ...element, content: mdTableToHtml(element.content) };
+            }
+            return element;
+          });
+          
+          // Build cleaned explanation text (similar to main parser)
+          let cleanedExplanationText = '';
+          elements.forEach(element => {
+            if (element.type === 'text' || element.type === 'latexPlaceholder') {
+              cleanedExplanationText += element.content + ' ';
+            }
+          });
+          question.explanation = cleanedExplanationText.trim();
+          
+          // Extract legacy properties for backwards compatibility
+          elements.forEach(element => {
+            switch (element.type) {
+              case 'image':
+                question.explanationImages.push(element.content);
+                break;
+              case 'codeBlock':
+                question.explanationCodeBlocks.push(element.content);
+                break;
+              case 'table':
+                question.explanationHtmlTables.push(mdTableToHtml(element.content));
+                break;
+              case 'latex':
+                if (element.content?.latexType === 'display') {
+                  question.explanationLatexBlocks.push(element.content.latex);
+                }
+                break;
+            }
+          });
+        } else {
+          question.explanation = '';
+        }
         
         // Parse metadata for unique ID
         const metadataLines = metadata.split('\n');

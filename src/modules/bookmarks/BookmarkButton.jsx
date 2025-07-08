@@ -59,11 +59,17 @@ const BookmarkButton = ({ question, quizName, questionIndex }) => {
           }
         } else {
           // Add bookmark - format as standard quiz question
+          console.log('🔍 BOOKMARK DEBUG - Question object:', question);
+          console.log('🔍 BOOKMARK DEBUG - question.rawText:', question.rawText);
+          console.log('🔍 BOOKMARK DEBUG - question.text:', question.text);
+          console.log('🔍 BOOKMARK DEBUG - question.rawExplanation:', question.rawExplanation);
+          console.log('🔍 BOOKMARK DEBUG - question.explanation:', question.explanation);
+          
           let bookmarkEntry = `
 --- start-question
 TYPE: ${question.type || 'T-F'}
 
-Q: ${question.text || ''}
+Q: ${question.rawText || question.text || ''}
 `;
 
           if (question.answer) {
@@ -71,9 +77,9 @@ Q: ${question.text || ''}
 A: ${question.answer}`;
           }
 
-          if (question.explanation) {
+          if (question.explanation || question.rawExplanation) {
             bookmarkEntry += `
-E: ${question.explanation}`;
+E: ${question.rawExplanation || question.explanation}`;
           }
 
           bookmarkEntry += `

@@ -121,27 +121,26 @@ A: F
 E: "Die Führung ist auf Deutsch und Englisch."
 --- end-question
 
+
+
 --- start-question
-TYPE: CLOZE
+TYPE: Cloze
 
-Q: 
-==Machen== Sie bitte während der Führung Handys und Smartphones ==aus== oder stellen Sie sie auf ==lautlos==.
-U Sie bitte während Führung Handys und Smartphones ==aus== oder stellen Sie sie auf ==lautlos==.
+Q: {{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
-| ==a==   | b   |
+| {{c::a}}   | b   |
 | --- | --- |
 | 1   | 2   |
 
-![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
 
 
 $x=5$
 
-$$y=5$$
+$$y=5_{1}$$
 
 
-E:
 
+E: 
 | $a^2$  | b  |
 | --- | --- |
 | 1   | 2   |
@@ -150,34 +149,40 @@ ausmachen = to turn off
 turn off = ausmachen
 
 --- end-question
+amous equation $E = mc^2$ that relates energy and mass?
 
-## LaTeX CLOZE Test Section
+
+A: Einstein
+
+--- end-question
+rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+--- end-question
 
 --- start-question
-TYPE: CLOZE
+TYPE: Cloze
 
-Q: 
-==Machen $x=1$== Sie bitte während der Führung Handys und Smartphones.
+Q: _____ asfsdfasdfasdfasdfasdf.
 
-Test with inline LaTeX: The formula ==$a^2 + b^2 = c^2$== is famous.
-
-Another test: ==Lösung $y=5_{1}$== ist richtig.
-
-| ==a==   | b   |
+| _____   | b   |
 | --- | --- |
 | 1   | 2   |
+
+
 
 $x=5$
 
 $$y=5_{1}$$
 
-E:
 
-| $a^2$  | b  |
-| --- | --- |
-| 1   | 2   |
 
-"Machen" means "to do/make"
-The solution $y=5_1$ is the correct answer.
+E: ausmachen = to turn off
+turn off = ausmachen
 
 --- end-question

@@ -192,6 +192,17 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
 
   const testsToDisplay = sortedTests.length > 0 ? sortedTests : availableTests;
 
+  // Filter out bookmarks.md from regular tests and add it as a special option at the top
+  const regularTests = testsToDisplay.filter(test => test.filename !== 'bookmarks.md');
+  const allTestsWithBookmarks = [{
+    filename: 'bookmarks.md',
+    displayName: '📚 Bookmarks',
+    createdTime: new Date(),
+    modifiedTime: new Date(),
+    size: 0,
+    isSpecial: true
+  }, ...regularTests];
+
   console.log('TestSelector: Render state', {
     loading,
     error,
@@ -280,22 +291,28 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
             </button>
           </div>
           <div className="text-sm text-gray-500 dark:text-gray-400 w-full text-center">
-            {testsToDisplay.length} quiz{testsToDisplay.length !== 1 ? 'es' : ''} available
+            {regularTests.length} quiz{regularTests.length !== 1 ? 'es' : ''} available + Bookmarks
           </div>
         </div>
 
         {/* Test Selection Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
-          {testsToDisplay.map((test, index) => (
+          {allTestsWithBookmarks.map((test, index) => (
             <div
               key={test.filename}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer border border-gray-200 dark:border-gray-700"
+              className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer border border-gray-200 dark:border-gray-700 ${
+                test.isSpecial ? 'ring-2 ring-yellow-400' : ''
+              }`}
               onClick={() => handleTestSelect(test)}
             >
               <div className="p-6">
-                <div className="flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full mx-auto mb-4">
+                <div className={`flex items-center justify-center w-16 h-16 rounded-full mx-auto mb-4 ${
+                  test.isSpecial 
+                    ? 'bg-gradient-to-br from-yellow-500 to-orange-600' 
+                    : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                }`}>
                   <span className="text-2xl font-bold text-white">
-                    {index + 1}
+                    {test.isSpecial ? '📚' : (index)}
                   </span>
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 text-center mb-2">
@@ -303,15 +320,27 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
                 </h3>
                 
                 {/* File metadata */}
-                <div className="text-xs text-gray-500 dark:text-gray-400 text-center mb-4 space-y-1">
-                  <div>Created: {formatDate(test.createdTime)}</div>
-                  <div>Modified: {formatDate(test.modifiedTime)}</div>
-                  <div>Size: {formatFileSize(test.size)}</div>
-                </div>
+                {!test.isSpecial && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center mb-4 space-y-1">
+                    <div>Created: {formatDate(test.createdTime)}</div>
+                    <div>Modified: {formatDate(test.modifiedTime)}</div>
+                    <div>Size: {formatFileSize(test.size)}</div>
+                  </div>
+                )}
+                
+                {test.isSpecial && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 text-center mb-4">
+                    <div>Review your saved questions</div>
+                  </div>
+                )}
                 
                 <div className="text-center">
-                  <button className="inline-flex items-center px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors duration-200">
-                    <span>Start Quiz</span>
+                  <button className={`inline-flex items-center px-4 py-2 font-medium rounded-lg transition-colors duration-200 ${
+                    test.isSpecial 
+                      ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                      : 'bg-blue-500 hover:bg-blue-600 text-white'
+                  }`}>
+                    <span>{test.isSpecial ? 'View Bookmarks' : 'Start Quiz'}</span>
                     <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>

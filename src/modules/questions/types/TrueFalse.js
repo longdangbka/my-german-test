@@ -142,6 +142,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
   // Extract the actual value for this question
   const questionValue = typeof value === 'object' ? (value?.[q.id] || '') : (value || '');
   const questionFeedback = typeof feedback === 'object' ? feedback?.[q.id] : feedback;
+  
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
       <div className="flex items-start space-x-4">

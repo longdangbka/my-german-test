@@ -117,7 +117,7 @@ function parseContentWithOrder(text, isCloze = false) {
   // Create a list of all content patterns with their positions
   const patterns = [
     { type: 'image', regex: /!\[\[([^\]]+)\]\]/g },
-    { type: 'codeBlock', regex: /```([\w-]*)\n([\s\S]*?)```/g },
+    { type: 'codeBlock', regex: /```([\w-]*)\r?\n([\s\S]*?)```/g },
     { type: 'table', regex: /(^\|.+\|\r?\n\|[- :|]+\|\r?\n(?:\|.*\|\r?\n?)+)/gm },
     { type: 'latexDisplay', regex: /\$\$([\s\S]+?)\$\$/g },
     { type: 'latexInline', regex: /\$([^$\n]+?)\$/g }
@@ -489,6 +489,7 @@ function parseStandardMarkdown(md) {
       // Multiline explanation: everything after E: up to --- end-question
       const eIdx = code.search(/^E:/m);
       let eT = '';
+      let rawE = ''; // Initialize rawE outside the if block
       let explanationImages = [];
       let explanationCodeBlocks = [];
       let explanationLatexBlocks = [];
@@ -501,7 +502,6 @@ function parseStandardMarkdown(md) {
         const eEnd = code.indexOf('--- end-question', eStart);
 
         // Slice out exactly the block we want, preserving ALL \n and whitespace
-        let rawE = '';
         if (eEnd !== -1) {
           rawE = code.slice(eStart, eEnd);
         } else {
@@ -627,6 +627,9 @@ function parseStandardMarkdown(md) {
           explanationLatexBlocks,
           explanationHtmlTables,
           explanationOrderedElements,
+          // Store raw content for bookmarking
+          rawText: rawQ,
+          rawExplanation: rawE,
         };
       }
       else if (type === 'T-F') {
@@ -646,6 +649,9 @@ function parseStandardMarkdown(md) {
           explanationLatexBlocks,
           explanationHtmlTables,
           explanationOrderedElements,
+          // Store raw content for bookmarking
+          rawText: rawQ,
+          rawExplanation: rawE,
         };
       }
       else if (type === 'SHORT') {
@@ -665,6 +671,9 @@ function parseStandardMarkdown(md) {
           explanationLatexBlocks,
           explanationHtmlTables,
           explanationOrderedElements,
+          // Store raw content for bookmarking
+          rawText: rawQ,
+          rawExplanation: rawE,
         };
       }
       return null;
