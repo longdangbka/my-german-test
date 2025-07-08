@@ -34,6 +34,31 @@ export async function getVaultImageSrc(imageName) {
   }
 }
 
+// Utility function to get audio source URL for the current environment
+export async function getVaultAudioSrc(audioName) {
+  if (!audioName) return null;
+  
+  console.log('getVaultAudioSrc: Loading audio:', audioName);
+  console.log('getVaultAudioSrc: Electron environment:', !!window.electron);
+  
+  if (window.electron && window.electron.readVaultImage) {
+    // In Electron, use IPC to get base64 data URL (reuse readVaultImage for any file)
+    try {
+      console.log('getVaultAudioSrc: Using IPC to load audio');
+      const dataUrl = await window.electron.readVaultImage(audioName);
+      console.log('getVaultAudioSrc: IPC result:', dataUrl ? 'SUCCESS' : 'FAILED');
+      return dataUrl;
+    } catch (error) {
+      console.error('getVaultAudioSrc: Error loading audio via IPC:', error);
+      return null;
+    }
+  } else {
+    console.log('getVaultAudioSrc: Using HTTP fallback');
+    // In browser, use regular HTTP path
+    return `/vault/${audioName}`;
+  }
+}
+
 export async function getAvailableTests(forceRefresh = false) {
   try {
     let availableTests = [];

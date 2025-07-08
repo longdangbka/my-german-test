@@ -69,11 +69,13 @@ function parseContentWithOrder(text, isCloze = false) {
   
   if (isCloze) {
     // First, find all cloze markers and replace LaTeX inside them with temporary protection markers
-    const clozeRegex = /\{\{c::([^}]+)\}\}/g;
+    // Support both syntaxes: {{c::content}} and {{content}}
+    const clozeRegexNew = /\{\{c::([^}]+)\}\}/g;  // New syntax
+    const clozeRegexLegacy = /\{\{([^}]+)\}\}/g;    // Legacy syntax
     let protectionIndex = 0;
     
-    protectedText = remaining.replace(clozeRegex, (match, content) => {
-      // Replace LaTeX inside this cloze marker with protection markers
+    // Helper function to protect LaTeX inside cloze content
+    const protectLatexInCloze = (match, content) => {
       let protectedContent = content;
       
       // Protect inline LaTeX $...$
@@ -92,7 +94,19 @@ function parseContentWithOrder(text, isCloze = false) {
         return protectionMarker;
       });
       
-      return `{{c::${protectedContent}}}`;
+      return match.includes('{{c::') ? `{{c::${protectedContent}}}` : `{{${protectedContent}}}`;
+    };
+    
+    // Process new syntax first
+    protectedText = remaining.replace(clozeRegexNew, protectLatexInCloze);
+    
+    // Then process legacy syntax (but be careful not to double-process)
+    protectedText = protectedText.replace(clozeRegexLegacy, (match, content) => {
+      // Skip if this is already part of new syntax (contains c::)
+      if (match.includes('c::')) {
+        return match;
+      }
+      return protectLatexInCloze(match, content);
     });
     
     console.log('🔍 PARSE ORDER - Original text:', remaining);
@@ -345,6 +359,25 @@ function parseStandardMarkdown(md) {
 
     console.log(`Processing section: ${num}`);
 
+    // — Check for AUDIO: blocks in code sections (outside transcript/questions)
+    let hasAudioBlock = false;
+    let audioFilename = null;
+    
+    // Look for AUDIO: blocks in code sections
+    const audioBlockMatch = block.match(/```[\s\S]*?AUDIO:\s*([\s\S]*?)```/im);
+    if (audioBlockMatch) {
+      hasAudioBlock = true;
+      console.log(`Found AUDIO block in section: ${num}`);
+      
+      // Check if there's a ![[filename.mp3]] syntax in the AUDIO block
+      const audioContent = audioBlockMatch[1];
+      const audioFileMatch = audioContent.match(/!\[\[([^\]]+\.(mp3|wav|m4a|ogg|flac))\]\]/i);
+      if (audioFileMatch) {
+        audioFilename = audioFileMatch[1];
+        console.log(`Found audio file reference: ${audioFilename}`);
+      }
+    }
+
     // — Extract the raw transcript up to "### Questions"
     const tMatch = block.match(
       /### Transcript\s*[\r\n]+([\s\S]*?)(?=### Questions|$)/i
@@ -391,6 +424,23 @@ function parseStandardMarkdown(md) {
             type:        'AUDIO',
             text:        'AUDIO:',
           };
+        }
+        
+        // AUDIO block with file reference detection
+        const audioWithFileMatch = code.match(/^AUDIO:\s*([\s\S]*?)$/im);
+        if (audioWithFileMatch) {
+          const audioContent = audioWithFileMatch[1].trim();
+          const audioFileMatch = audioContent.match(/!\[\[([^\]]+\.(mp3|wav|m4a|ogg|flac))\]\]/i);
+          if (audioFileMatch) {
+            const audioFilename = audioFileMatch[1];
+            console.log(`Found AUDIO question with file: ${audioFilename}`);
+            return {
+              id:          `g${num}_q${idx+1}`,
+              type:        'AUDIO',
+              text:        'AUDIO:',
+              audioFile:   audioFilename,
+            };
+          }
         }
         const typeM = code.match(/^TYPE:\s*(CLOZE|T-F|Short)$/im);
         const type  = typeM ? typeM[1].toUpperCase() : null;
@@ -624,6 +674,24 @@ function parseStandardMarkdown(md) {
     }
     }).filter(Boolean);
 
+    // If we found an AUDIO block but no AUDIO questions, add one
+    if (hasAudioBlock && !questions.some(q => q.type === 'AUDIO')) {
+      console.log(`Adding implicit AUDIO question for section: ${num}`);
+      const audioQuestion = {
+        id: `g${num}_q0`,
+        type: 'AUDIO',
+        text: 'AUDIO:',
+      };
+      
+      // Add audio filename if found
+      if (audioFilename) {
+        audioQuestion.audioFile = audioFilename;
+        console.log(`Audio question includes file: ${audioFilename}`);
+      }
+      
+      questions.unshift(audioQuestion);
+    }
+
     groups.push({
       id:         `g${num}`,
       title:      headingText, // Use the heading text without the ###
@@ -632,6 +700,7 @@ function parseStandardMarkdown(md) {
       transcriptCodeBlocks: transcriptElements.codeBlocks,
       transcriptLatexBlocks: transcriptElements.latexBlocks,
       transcriptHtmlTables: transcriptElements.htmlTables,
+      audioFile: audioFilename, // Add audio file reference to group
       questions,
     });
   }

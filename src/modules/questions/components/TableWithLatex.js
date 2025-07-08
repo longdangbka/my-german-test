@@ -114,8 +114,11 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
     tempDiv.innerHTML = text;
     const decodedText = tempDiv.textContent || tempDiv.innerText || text;
     
-    // Check if this cell contains cloze markers (new {{c::}} syntax)
-    const hasClozeMarkers = /\{\{c::([^}]+)\}\}/.test(decodedText);
+    // Check if this cell contains cloze markers or blank placeholders
+    const hasClozeMarkers = /==([^=]+)==/.test(decodedText) || 
+                           /\{\{c::([^}]+)\}\}/.test(decodedText) || 
+                           /\{\{([^}]+)\}\}/.test(decodedText) ||
+                           /_____/.test(decodedText);
     
     // If we have cloze functionality and this cell has markers, render interactive inputs
     if (hasClozeMarkers && question && onChange && question.blanks) {
@@ -128,6 +131,218 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
 
   // Function to render a cell with interactive cloze input fields
   const renderCellWithClozeInputs = (text, question, value, onChange, showFeedback, feedback) => {
+    const parts = [];
+    let remaining = text;
+    
+    // First check for blank placeholders (_____) which are created from cloze markers
+    if (/_____/.test(remaining)) {
+      return renderCellWithBlankPlaceholders(remaining, question, value, onChange, showFeedback, feedback);
+    }
+    
+    // Use the new cloze parser to find markers that can contain LaTeX
+    const clozeMarkers = parseClozeMarkers(remaining);
+    
+    if (clozeMarkers.length === 0) {
+      // No cloze markers, just render with LaTeX
+      return renderWithLatex(remaining);
+    }
+    
+    let currentPos = 0;
+    
+    for (let i = 0; i < clozeMarkers.length; i++) {
+      const marker = clozeMarkers[i];
+      
+      // Add text before this marker
+      if (marker.start > currentPos) {
+        const textBefore = remaining.slice(currentPos, marker.start);
+        if (textBefore) {
+          const renderedText = renderWithLatex(textBefore);
+          if (Array.isArray(renderedText)) {
+            parts.push(...renderedText);
+          } else {
+            parts.push(renderedText);
+          }
+        }
+      }
+      
+      // Handle the cloze marker
+      const markerContent = marker.content;
+      
+      // Find the corresponding blank index in the question's blanks array
+      const blankIndex = question.blanks.findIndex(blank => blank === markerContent);
+      
+      if (blankIndex !== -1) {
+        const fieldName = `${question.id}_${blankIndex + 1}`;
+        const inputValue = value[fieldName] || '';
+          const feedbackKey = fieldName;
+          const isCorrect = showFeedback && feedback[feedbackKey] === 'correct';
+          
+          // Create a unique key that includes question id, blank index, and marker content
+          // This prevents React from reusing cached input components
+          const uniqueKey = `${question.id}_blank_${blankIndex}_${markerContent}_table`;
+          
+          parts.push(
+            <span key={`${fieldName}-container-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              {showFeedback ? (
+                // When showing feedback, display user input (if any) and expected answer
+                <>
+                  {/* Show what the user typed (if anything) with colored background */}
+                  {inputValue ? (
+                    <>
+                      <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                        isCorrect
+                          ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                          : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                      }`}>
+                        {inputValue}
+                      </span>
+                      {/* Show correct/incorrect symbol */}
+                      <span className={isCorrect ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                        {isCorrect ? '✅' : '❌'}
+                      </span>
+                    </>
+                  ) : (
+                    // If user left blank, show a placeholder and a cross
+                    <>
+                      <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                        (blank)
+                      </span>
+                      <span className="text-red-500 dark:text-red-400">❌</span>
+                    </>
+                  )}
+                  {/* Show expected answer in gray background */}
+                  <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                    {markerContent}
+                  </span>
+                </>
+              ) : (
+                <input
+                  key={uniqueKey}
+                  name={fieldName}
+                  type="text"
+                  value={inputValue}
+                  onChange={onChange}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                  className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                  data-blank-index={blankIndex}
+                  data-marker-content={markerContent}
+                />
+              )}
+            </span>
+          );
+        } else {
+          // If no matching blank found, just show the marker as text  
+          parts.push(<span key={`marker-${i}`} className="text-gray-500">{marker.match}</span>);
+        }
+      
+      currentPos = marker.end;
+    }
+    
+    // Add remaining text after the last marker
+    if (currentPos < remaining.length) {
+      const textAfter = remaining.slice(currentPos);
+      if (textAfter) {
+        const renderedText = renderWithLatex(textAfter);
+        if (Array.isArray(renderedText)) {
+          parts.push(...renderedText);
+        } else {
+          parts.push(renderedText);
+        }
+      }
+    }
+    
+    return parts.length > 0 ? parts : renderWithLatex(remaining);
+  };
+
+  // Function to render cells with blank placeholders (_____) created from cloze markers
+  const renderCellWithBlankPlaceholders = (text, question, value, onChange, showFeedback, feedback) => {
+    const parts = [];
+    let remaining = text;
+    let blankIndex = 0;
+    
+    const blankSections = remaining.split('_____');
+    
+    for (let i = 0; i < blankSections.length; i++) {
+      // Add text section
+      if (blankSections[i]) {
+        const renderedText = renderWithLatex(blankSections[i]);
+        if (Array.isArray(renderedText)) {
+          parts.push(...renderedText);
+        } else {
+          parts.push(renderedText);
+        }
+      }
+      
+      // Add input field if there's a blank after this section
+      if (i < blankSections.length - 1 && question.blanks && blankIndex < question.blanks.length) {
+        const fieldName = `${question.id}_${blankIndex + 1}`;
+        const inputValue = value[fieldName] || '';
+        const feedbackKey = fieldName;
+        const isCorrect = showFeedback && feedback[feedbackKey] === 'correct';
+        const expectedAnswer = question.blanks[blankIndex];
+        
+        parts.push(
+          <span key={`blank-${blankIndex}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            {showFeedback ? (
+              // When showing feedback, display user input (if any) and expected answer
+              <>
+                {/* Show what the user typed (if anything) with colored background */}
+                {inputValue ? (
+                  <>
+                    <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                      isCorrect
+                        ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                    }`}>
+                      {inputValue}
+                    </span>
+                    {/* Show correct/incorrect symbol */}
+                    <span className={isCorrect ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                      {isCorrect ? '✅' : '❌'}
+                    </span>
+                  </>
+                ) : (
+                  // If user left blank, show a placeholder and a cross
+                  <>
+                    <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                      (blank)
+                    </span>
+                    <span className="text-red-500 dark:text-red-400">❌</span>
+                  </>
+                )}
+                {/* Show expected answer in gray background */}
+                <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {expectedAnswer}
+                </span>
+              </>
+            ) : (
+              <input
+                name={fieldName}
+                type="text"
+                value={inputValue}
+                onChange={onChange}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                data-blank-index={blankIndex}
+              />
+            )}
+          </span>
+        );
+        
+        blankIndex++;
+      }
+    }
+    
+    return parts.length > 0 ? parts : renderWithLatex(remaining);
+  };
+
+  // Function to render a cell with interactive cloze input fields (ORIGINAL LOGIC)
+  // eslint-disable-next-line no-unused-vars
+  const renderCellWithClozeInputsOriginal = (text, question, value, onChange, showFeedback, feedback) => {
     const parts = [];
     let remaining = text;
     

@@ -21,10 +21,9 @@ export function initFeedback(q) {
   return out;
 }
 export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
-  console.log('🔍 CLOZE RENDERER - Question object:', q);
-  console.log('🔍 CLOZE RENDERER - Question type:', q.type);
-  console.log('🔍 CLOZE RENDERER - Question blanks:', q.blanks);
-  console.log('🔍 CLOZE RENDERER - Question orderedElements:', q.orderedElements);
+  // Debugging info for developer troubleshooting
+  console.log('🔍 CLOZE RENDERER - Rendering CLOZE question:', q.id);
+  console.log('🔍 CLOZE RENDERER - Blanks found:', q.blanks?.length || 0);
   
   // Add visual debugging for development
   const isDebug = window.location.search.includes('debug');
@@ -69,14 +68,6 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
   if (!q.blanks || q.blanks.length === 0) {
     return (
       <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
-        {isDebug && (
-          <div className="debug-info bg-yellow-100 p-2 mb-4 text-xs">
-            <strong>DEBUG - No blanks found:</strong><br/>
-            Type: {q.type}<br/>
-            Blanks: {JSON.stringify(q.blanks)}<br/>
-            Elements: {q.orderedElements?.length || 0}
-          </div>
-        )}
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {renderOrderedElements(q.orderedElements || [])}
@@ -96,6 +87,8 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
       </div>
     );
   }
+  
+
   
   // For cloze questions with blanks, render all content in order
   return (
@@ -188,10 +181,10 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                       // When showing feedback, display user input (if any) and expected answer
                       <span className="inline-flex items-center gap-2 mx-2">
                         {/* Show what the user typed (if anything) with colored background */}
-                        {value[`${question.id}_${currentBlankIndex + 1}`] ? (
+                        {value && value[`${question.id}_${currentBlankIndex + 1}`] ? (
                           <>
                             <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
-                              feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
+                              feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
                                 ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
                                 : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
                             }`}>
@@ -199,11 +192,11 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                             </span>
                             {/* Show correct/incorrect symbol */}
                             <span className={
-                              feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
+                              feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
                                 ? 'text-green-500 dark:text-green-400'
                                 : 'text-red-500 dark:text-red-400'
                             }>
-                              {feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct' ? '✅' : '❌'}
+                              {feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct' ? '✅' : '❌'}
                             </span>
                           </>
                         ) : (
@@ -217,7 +210,7 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                         )}
                         {/* Show expected answer in gray background */}
                         <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
-                          {renderSimpleLatex(question.blanks[currentBlankIndex] || '')}
+                          {renderSimpleLatex(question.blanks && question.blanks[currentBlankIndex] ? question.blanks[currentBlankIndex] : '')}
                         </span>
                       </span>
                     ) : (
@@ -225,7 +218,7 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                       <input
                         key={`${question.id}_${currentBlankIndex}_group_${i}`}
                         name={`${question.id}_${currentBlankIndex + 1}`}
-                        value={value[`${question.id}_${currentBlankIndex + 1}`] || ''}
+                        value={(value && value[`${question.id}_${currentBlankIndex + 1}`]) || ''}
                         onChange={onChange}
                         autoComplete="off"
                         autoCorrect="off"

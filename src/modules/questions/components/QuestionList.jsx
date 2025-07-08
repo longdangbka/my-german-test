@@ -12,8 +12,8 @@ export default function QuestionList({ questions, answers, feedback, onChange, s
           <Renderer
             key={q.id}
             q={q}
-            value={q.type === 'CLOZE' ? answers : answers[q.id]}
-            feedback={q.type === 'CLOZE' ? feedback : feedback[q.id]}
+            value={answers}
+            feedback={feedback}
             onChange={onChange}
             showFeedback={showFeedback}
             seq={seq++}

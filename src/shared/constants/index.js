@@ -31,7 +31,8 @@ export const PATHS = {
 
 // Regex patterns
 export const PATTERNS = {
-  CLOZE_MARKER: /\{\{c::([^}]+)\}\}/g, // New cloze syntax
+  CLOZE_MARKER_NEW: /\{\{c::([^}]+)\}\}/g,   // New cloze syntax
+  CLOZE_MARKER_LEGACY: /\{\{([^}]+)\}\}/g,   // Legacy cloze syntax
   LATEX_INLINE: /\$([^$\n]+?)\$/g,
   LATEX_DISPLAY: /\$\$([\s\S]+?)\$\$/g,
   IMAGE_LINK: /!\[\[([^\]]+)\]\]/g,
@@ -39,8 +40,9 @@ export const PATTERNS = {
 };
 
 /**
- * Parse cloze markers with new syntax: {{c::[content]}}
- * This avoids conflicts with LaTeX expressions
+ * Parse cloze markers with support for both syntaxes:
+ * - New syntax: {{c::[content]}} (avoids conflicts with LaTeX)
+ * - Legacy syntax: {{[content]}} (for backward compatibility)
  * @param {string} text - Text to parse
  * @returns {Array} Array of {match, content, start, end} objects
  */
@@ -53,12 +55,20 @@ export function parseClozeMarkers(text) {
   let i = 0;
   
   while (i < text.length) {
-    // Look for cloze pattern: {{c::
-    if (text[i] === '{' && text[i + 1] === '{' && 
-        text[i + 2] === 'c' && text[i + 3] === ':' && text[i + 4] === ':') {
+    // Look for cloze patterns: {{c:: or {{
+    if (text[i] === '{' && text[i + 1] === '{') {
       
       const start = i;
-      i += 5; // Skip opening {{c::
+      let isNewSyntax = false;
+      let skipChars = 2; // Default for legacy {{
+      
+      // Check if it's the new syntax {{c::
+      if (text[i + 2] === 'c' && text[i + 3] === ':' && text[i + 4] === ':') {
+        isNewSyntax = true;
+        skipChars = 5; // Skip {{c::
+      }
+      
+      i += skipChars;
       let content = '';
       let braceCount = 1; // We've seen one opening {{
       
@@ -82,12 +92,16 @@ export function parseClozeMarkers(text) {
       }
       
       if (braceCount === 0) {
-        markers.push({
-          match: `{{c::${content}}}`,
-          content: content,
-          start: start,
-          end: i
-        });
+        // Only accept valid cloze markers with non-empty content
+        if (content.trim()) {
+          const matchText = isNewSyntax ? `{{c::${content}}}` : `{{${content}}}`;
+          markers.push({
+            match: matchText,
+            content: content,
+            start: start,
+            end: i
+          });
+        }
       } else {
         // Unmatched braces, treat as regular text
         i = start + 1;

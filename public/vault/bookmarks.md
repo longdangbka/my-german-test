@@ -6,7 +6,7 @@
 TYPE: CLOZE
 
 Q: 
-{{Machen}} Sie bitte während der Führung Handys und Smartphones {aus} oder stellen Sie sie auf {lautlos}.
+=Machen= Sie bitte während der Führung Handys und Smartphones {aus} oder stellen Sie sie auf {lautlos}.
 
 A: aus, lautlos
 E: ausmachen = to turn off

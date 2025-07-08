@@ -125,10 +125,10 @@ E: "Die Führung ist auf Deutsch und Englisch."
 TYPE: CLOZE
 
 Q: 
-{{c::Machen}} Sie bitte während der Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
-U Sie bitte während Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
+==Machen== Sie bitte während der Führung Handys und Smartphones ==aus== oder stellen Sie sie auf ==lautlos==.
+U Sie bitte während Führung Handys und Smartphones ==aus== oder stellen Sie sie auf ==lautlos==.
 
-| {{c::a}}   | b   |
+| ==a==   | b   |
 | --- | --- |
 | 1   | 2   |
 
@@ -157,13 +157,13 @@ turn off = ausmachen
 TYPE: CLOZE
 
 Q: 
-{{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+==Machen $x=1$== Sie bitte während der Führung Handys und Smartphones.
 
-Test with inline LaTeX: The formula {{c::$a^2 + b^2 = c^2$}} is famous.
+Test with inline LaTeX: The formula ==$a^2 + b^2 = c^2$== is famous.
 
-Another test: {{c::Lösung $y=5_{1}$}} ist richtig.
+Another test: ==Lösung $y=5_{1}$== ist richtig.
 
-| {{a}}   | b   |
+| ==a==   | b   |
 | --- | --- |
 | 1   | 2   |
 

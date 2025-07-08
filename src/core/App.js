@@ -76,6 +76,11 @@ function App() {
 
   // Check all answered
   const allAnswered = qd.currentGroup.questions.every(q => {
+    // Skip AUDIO questions as they don't require answers
+    if (q.type === 'AUDIO') {
+      return true;
+    }
+    
     if (q.type === 'CLOZE') {
       return q.blanks.every((_, bi) => (qd.answers[`${q.id}_${bi+1}`] ?? '').trim() !== '');
     }
@@ -86,6 +91,11 @@ function App() {
   const checkAnswers = () => {
     const newFb = {};
     qd.currentGroup.questions.forEach(q => {
+      // Skip AUDIO questions as they don't have answers to check
+      if (q.type === 'AUDIO') {
+        return;
+      }
+      
       if (q.type === 'CLOZE') {
         q.blanks.forEach((b, bi) => {
           const key = `${q.id}_${bi+1}`;
@@ -103,11 +113,35 @@ function App() {
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
-  // Show answers without auto-filling
+  // Show answers by auto-filling and then checking
   const doTestForMe = () => {
-    console.log('🔍 doTestForMe clicked - checking answers');
-    // Just check the current answers without auto-filling
-    checkAnswers();
+    console.log('🔍 doTestForMe clicked - auto-filling and checking answers');
+    
+    // Auto-fill all answers
+    const newAnswers = {};
+    qd.currentGroup.questions.forEach(q => {
+      // Skip AUDIO questions as they don't have answers to fill
+      if (q.type === 'AUDIO') {
+        return;
+      }
+      
+      if (q.type === 'CLOZE') {
+        q.blanks.forEach((blank, bi) => {
+          const key = `${q.id}_${bi+1}`;
+          newAnswers[key] = blank;
+        });
+      } else {
+        newAnswers[q.id] = q.answer;
+      }
+    });
+    
+    // Set the auto-filled answers
+    qd.setAnswers(prevAnswers => ({ ...prevAnswers, ...newAnswers }));
+    
+    // Then check the answers
+    setTimeout(() => {
+      checkAnswers();
+    }, 100); // Small delay to ensure state update
   };
 
   // Handle theme toggle
@@ -145,7 +179,7 @@ function App() {
           </button>
         </div>
         
-        {qd.currentGroup.transcript && <AudioPlayer group={qd.currentGroup} />}
+        {(qd.currentGroup.transcript || qd.currentGroup.audioFile || qd.currentGroup.questions?.some(q => q.audioFile)) && <AudioPlayer group={qd.currentGroup} />}
         <QuestionList
           questions={qd.currentGroup.questions}
           answers={qd.answers}

@@ -1,5 +1,9 @@
 ## REFRESH TEST
 
+```
+AUDIO: ![[audio1_1.mp3]]
+```
+
 ### Questions
 
 --- start-question
@@ -171,5 +175,23 @@ E:
 
 ausmachen = to turn off
 turn off = ausmachen
+
+--- end-question
+
+## AUDIO ONLY TEST SECTION
+
+### Questions
+
+--- start-question
+AUDIO: ![[audio1_2.mp3]]
+--- end-question
+
+--- start-question
+TYPE: T-F
+
+Q: This is a test question in the audio-only section.
+
+A: R
+E: This tests that the audio player appears even without a transcript section.
 
 --- end-question

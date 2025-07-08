@@ -1,14 +1,55 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { audioSources, setAudioSource } from './audios';
+import { getVaultAudioSrc } from '../../shared/utils/testUtils';
 import '../../assets/styles/audio-contrast.css';
 
 export default function AudioPlayer({ group }) {
-  const [src, setSrc] = useState(audioSources[group.title] || '');
-  const [objectUrl, setObjectUrl] = useState(null);
+  const [src, setSrc] = useState('');
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showTranscript, setShowTranscript] = useState(false);
   const audioRef = useRef();
-  const fileInputRef = useRef();
+
+  // Initialize audio source
+  useEffect(() => {
+    const initializeAudio = async () => {
+      // First priority: Check if group has an audioFile from vault
+      if (group.audioFile) {
+        console.log('Loading audio from vault (group level):', group.audioFile);
+        try {
+          const vaultAudioSrc = await getVaultAudioSrc(group.audioFile);
+          if (vaultAudioSrc) {
+            setSrc(vaultAudioSrc);
+            console.log('Successfully loaded vault audio');
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading vault audio:', error);
+        }
+      }
+      
+      // Second priority: Check if any AUDIO question has an audioFile
+      const audioQuestion = group.questions?.find(q => q.type === 'AUDIO' && q.audioFile);
+      if (audioQuestion?.audioFile) {
+        console.log('Loading audio from vault (question level):', audioQuestion.audioFile);
+        try {
+          const vaultAudioSrc = await getVaultAudioSrc(audioQuestion.audioFile);
+          if (vaultAudioSrc) {
+            setSrc(vaultAudioSrc);
+            console.log('Successfully loaded vault audio from question');
+            return;
+          }
+        } catch (error) {
+          console.error('Error loading vault audio from question:', error);
+        }
+      }
+      
+      // Fallback: Use existing audio sources
+      const existingSource = audioSources[group.title] || '';
+      setSrc(existingSource);
+    };
+
+    initializeAudio();
+  }, [group.title, group.audioFile, group.questions]);
 
   // Listen for audio source updates
   useEffect(() => {
@@ -19,12 +60,12 @@ export default function AudioPlayer({ group }) {
     return () => window.removeEventListener('audioSourceUpdated', handler);
   }, [group.title]);
 
-  // Cleanup object URL when src changes or unmounts
+  // Cleanup object URL when component unmounts
   useEffect(() => {
     return () => {
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      // Cleanup any object URLs when component unmounts
     };
-  }, [objectUrl]);
+  }, []);
 
   // Update playback rate on audio element
   useEffect(() => {
@@ -33,17 +74,34 @@ export default function AudioPlayer({ group }) {
     }
   }, [playbackRate]);
 
-  // Keyboard controls for forward/backward only (no spacebar)
+  // Keyboard controls for audio playback
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (!audioRef.current) return;
       // Only handle if not typing in an input/textarea
       const tag = document.activeElement.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable) return;
+      
       if (e.key === 'ArrowLeft') {
         audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
         e.preventDefault();
       } else if (e.key === 'ArrowRight') {
+        audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
+        e.preventDefault();
+      } else if (e.key === 'j' || e.key === 'J') {
+        // J key: pause/play toggle
+        if (audioRef.current.paused) {
+          audioRef.current.play();
+        } else {
+          audioRef.current.pause();
+        }
+        e.preventDefault();
+      } else if (e.key === 'h' || e.key === 'H') {
+        // H key: backward 1.5s
+        audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
+        e.preventDefault();
+      } else if (e.key === 'k' || e.key === 'K') {
+        // K key: forward 1.5s
         audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
         e.preventDefault();
       }
@@ -150,6 +208,11 @@ export default function AudioPlayer({ group }) {
         >
           1.5s ⏩
         </button>
+      </div>
+      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
+        Keyboard shortcuts: <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">J</kbd> pause/play, 
+        <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded ml-1">H</kbd> back 1.5s, 
+        <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded ml-1">K</kbd> forward 1.5s
       </div>
       <div className="upload-wrapper">
         <label htmlFor={`upload-${group.title}`} className="btn">

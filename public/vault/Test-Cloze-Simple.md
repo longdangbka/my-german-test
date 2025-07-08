@@ -1,4 +1,6 @@
-## Test CLOZE
+## Test CLOZE with Audio
+
+AUDIO: ![[audio1_1.mp3]]
 
 ### Questions
 
@@ -6,12 +8,13 @@
 TYPE: CLOZE
 
 Q: 
-Simple test: {{basic}} word.
+Simple test: {{c::basic}} word.
 LaTeX test: {{c::Machen $x=1$}} Sie bitte.
-Multiple: {{first}} and {{second $y=2$}} items.
+Multiple: {{c::first}} and {{c::second $y=2$}} items.
+Legacy syntax: {{legacy}} should also work.
 
 E:
 Test explanation
-Expected blanks: basic, Machen $x=1$, first, second $y=2$
+Expected blanks: basic, Machen $x=1$, first, second $y=2$, legacy
 
 --- end-question

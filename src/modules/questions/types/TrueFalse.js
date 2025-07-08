@@ -139,6 +139,9 @@ function renderOrderedElements(elements) {
 }
 
 export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
+  // Extract the actual value for this question
+  const questionValue = typeof value === 'object' ? (value?.[q.id] || '') : (value || '');
+  const questionFeedback = typeof feedback === 'object' ? feedback?.[q.id] : feedback;
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
       <div className="flex items-start space-x-4">
@@ -162,18 +165,18 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             // When showing feedback, display user selection and expected answer
             <div className="flex items-center space-x-2">
               {/* Show what the user selected (if anything) */}
-              {value ? (
+              {questionValue ? (
                 <>
                   <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
-                    feedback === 'correct'
+                    questionFeedback === 'correct'
                       ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
                       : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
                   }`}>
-                    {value === 'R' ? '✓ Richtig' : '✗ Falsch'}
+                    {questionValue === 'R' ? '✓ Richtig' : '✗ Falsch'}
                   </span>
                   {/* Show correct/incorrect symbol */}
-                  <span className={feedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-                    {feedback === 'correct' ? '✅' : '❌'}
+                  <span className={questionFeedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                    {questionFeedback === 'correct' ? '✅' : '❌'}
                   </span>
                 </>
               ) : (
@@ -191,7 +194,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
               </span>
             </div>
           ) : (
-            <select name={q.id} value={value} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
+            <select name={q.id} value={questionValue} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
               <option value="">– Select –</option>
               <option value="R">✓ Richtig</option>
               <option value="F">✗ Falsch</option>

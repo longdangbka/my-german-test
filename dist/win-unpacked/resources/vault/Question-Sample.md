@@ -1,29 +1,24 @@
 ## REFRESH TEST
 
+```
+AUDIO: ![[audio1_1.mp3]]
+```
+
 ### Questions
 
 --- start-question
 TYPE: Short
 
-Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
-
-ANSWER: Einstein
-
---- end-question
-
---- start-question
-TYPE: TrueFalse
-
 Q: The equation $F = ma$ describes Newton's second law of motion. True or false?
 
-ANSWER: True
+A: True
 
 --- end-question
 
 --- start-question
 TYPE: T-F
 
-Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$32156
+Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ 32156.
 
 asdasdasdasd
 
@@ -101,10 +96,12 @@ $x=5$
 }
 ```
 
+A: R
+
 --- end-question
 
 
-## SECOND SECTION TEST
+## SECOND SECTION 2 TEST
 
 ```
 AUDIO:
@@ -133,7 +130,7 @@ TYPE: T-F
 
 Q: 
 
-| a   | b   |
+| a   | $b+5$   |
 | --- | --- |
 | 1   | 2   |
 
@@ -149,18 +146,23 @@ E: "Die Führung ist auf Deutsch und Englisch."
 --- start-question
 TYPE: CLOZE
 
-Q: 
-{{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+Q:
+
+We have $x=5$ here. 
+
+{{c::Machen $x=5$}} Sie bitte während der Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
+U Sie bitte während Führung Handys und Smartphones {{c::aus}} oder stellen Sie sie auf {{c::lautlos}}.
 
 | {{c::a}}   | b   |
 | --- | --- |
 | 1   | 2   |
 
+![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
 
 
 $x=5$
 
-$$y=5_{1}$$
+$$y=5$$
 
 
 E:
@@ -171,5 +173,36 @@ E:
 
 ausmachen = to turn off
 turn off = ausmachen
+
+--- end-question
+
+## LaTeX CLOZE Test Section
+
+--- start-question
+TYPE: CLOZE
+
+Q: 
+{{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+
+Test with inline LaTeX: The formula {{c::$a^2 + b^2 = c^2$}} is famous.
+
+Another test: {{c::Lösung $y=5_{1}$}} ist richtig.
+
+| {{c::a}}   | b   |
+| --- | --- |
+| 1   | 2   |
+
+$x=5$
+
+$$y=5_{1}$$
+
+E:
+
+| $a^2$  | b  |
+| --- | --- |
+| 1   | 2   |
+
+"Machen" means "to do/make"
+The solution $y=5_1$ is the correct answer.
 
 --- end-question

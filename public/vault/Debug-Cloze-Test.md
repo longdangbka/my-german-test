@@ -6,10 +6,10 @@
 TYPE: CLOZE
 
 Q: 
-Basic test: {{basic}} word.
-LaTeX test: {{c::Machen $x=1$}} Sie bitte während der Führung.
-Complex LaTeX: {{Formula $a^2 + b^2 = c^2$}} is Pythagorean.
-Multiple: {{first}} and {{second $y=2$}} items.
+Basic test: ==basic== word.
+LaTeX test: ==Machen $x=1$== Sie bitte während der Führung.
+Complex LaTeX: ==Formula $a^2 + b^2 = c^2$== is Pythagorean.
+Multiple: ==first== and ==second $y=2$== items.
 
 E:
 Test explanation.

@@ -16,5 +16,5 @@ TYPE: Short
 ANSWER: Pythagoras
 
 ## Test 4: Einstein (Cloze)
-Q: The famous physicist {{c1::Einstein}} discovered the formula $E = mc^2$.
+Q: The famous physicist ==Einstein== discovered the formula $E = mc^2$.
 TYPE: Cloze

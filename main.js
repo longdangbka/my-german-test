@@ -157,6 +157,7 @@ function registerIpcHandlers() {
       const ext = path.extname(filename).toLowerCase();
       let mimeType = 'image/jpeg'; // default
       
+      // Handle image types
       switch (ext) {
         case '.png':
           mimeType = 'image/png';
@@ -171,11 +172,27 @@ function registerIpcHandlers() {
         case '.jpeg':
           mimeType = 'image/jpeg';
           break;
+        // Handle audio types
+        case '.mp3':
+          mimeType = 'audio/mpeg';
+          break;
+        case '.wav':
+          mimeType = 'audio/wav';
+          break;
+        case '.m4a':
+          mimeType = 'audio/mp4';
+          break;
+        case '.ogg':
+          mimeType = 'audio/ogg';
+          break;
+        case '.flac':
+          mimeType = 'audio/flac';
+          break;
       }
       
       const base64 = imageBuffer.toString('base64');
       const dataUrl = `data:${mimeType};base64,${base64}`;
-      console.log(`Successfully read image ${filename}, size: ${imageBuffer.length} bytes`);
+      console.log(`Successfully read file ${filename}, size: ${imageBuffer.length} bytes, type: ${mimeType}`);
       return dataUrl;
     } catch (error) {
       console.error('Error reading vault image:', error);
