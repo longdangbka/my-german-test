@@ -150,14 +150,14 @@ function App() {
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
-  // Show answers by auto-filling and then checking
+  // Show answers without auto-filling user inputs
   const doTestForMe = () => {
-    console.log('🔍 doTestForMe clicked - auto-filling and checking answers');
+    console.log('🔍 See Answer clicked - showing correct answers without auto-filling');
     
-    // Auto-fill all answers
-    const newAnswers = {};
+    // Generate feedback for all questions based on their current state
+    const newFeedback = {};
     qd.currentGroup.questions.forEach(q => {
-      // Skip AUDIO questions as they don't have answers to fill
+      // Skip AUDIO questions as they don't have answers to check
       if (q.type === 'AUDIO') {
         return;
       }
@@ -165,20 +165,51 @@ function App() {
       if (q.type === 'CLOZE') {
         q.blanks.forEach((blank, bi) => {
           const key = `${q.id}_${bi+1}`;
-          newAnswers[key] = blank;
+          const userAnswer = qd.answers[key] || '';
+          // Compare user answer with correct answer (case-insensitive, trimmed)
+          const isCorrect = userAnswer.trim().toLowerCase() === blank.trim().toLowerCase();
+          newFeedback[key] = isCorrect ? 'correct' : 'incorrect';
         });
       } else {
-        newAnswers[q.id] = q.answer;
+        const userAnswer = qd.answers[q.id] || '';
+        // For True/False and Short Answer, compare with correct answer
+        let isCorrect = false;
+        if (q.type === 'T-F') {
+          // Convert UI values (R/F) to stored values (True/False) for comparison
+          let userAnswerConverted = '';
+          if (userAnswer === 'R') userAnswerConverted = 'True';
+          else if (userAnswer === 'F') userAnswerConverted = 'False';
+          else userAnswerConverted = userAnswer; // Keep original if not R/F
+          
+          isCorrect = userAnswerConverted === q.answer;
+          
+          console.log('🔍 T-F Comparison Debug:', {
+            questionId: q.id,
+            userAnswer,
+            userAnswerConverted,
+            correctAnswer: q.answer,
+            isCorrect
+          });
+        } else if (q.type === 'Short') {
+          // Case-insensitive comparison for short answers
+          isCorrect = userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase();
+          
+          console.log('🔍 Short Answer Comparison Debug:', {
+            questionId: q.id,
+            userAnswer: `"${userAnswer}"`,
+            userAnswerTrimmed: `"${userAnswer.trim().toLowerCase()}"`,
+            correctAnswer: `"${q.answer || ''}"`,
+            correctAnswerTrimmed: `"${(q.answer || '').trim().toLowerCase()}"`,
+            isCorrect
+          });
+        }
+        newFeedback[q.id] = isCorrect ? 'correct' : 'incorrect';
       }
     });
     
-    // Set the auto-filled answers
-    qd.setAnswers(prevAnswers => ({ ...prevAnswers, ...newAnswers }));
-    
-    // Then check the answers
-    setTimeout(() => {
-      checkAnswers();
-    }, 100); // Small delay to ensure state update
+    // Set the feedback and show feedback mode
+    qd.setFeedback(newFeedback);
+    setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
   // Handle theme toggle

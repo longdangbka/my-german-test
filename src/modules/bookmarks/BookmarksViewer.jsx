@@ -551,18 +551,91 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
   };
 
   const doTestForMe = () => {
-    const filled = { ...answers };
+    console.log('🔍 See Answer clicked in bookmarks - showing correct answers without auto-filling');
+    
+    // Generate feedback for all bookmarked questions based on their current state
+    const newFeedback = {};
     bookmarks.forEach(q => {
+      console.log('🔍 Processing bookmark question:', {
+        id: q.id,
+        type: q.type,
+        answer: q.answer,
+        userAnswer: answers[q.id] || '',
+        hasBlanks: !!(q.blanks && q.blanks.length > 0)
+      });
+      
       if (q.type === 'CLOZE' && q.blanks) {
-        q.blanks.forEach((b, bi) => {
-          filled[`${q.id}_${bi+1}`] = b;
+        q.blanks.forEach((blank, bi) => {
+          const key = `${q.id}_${bi+1}`;
+          const userAnswer = answers[key] || '';
+          // Compare user answer with correct answer (case-insensitive, trimmed)
+          const isCorrect = userAnswer.trim().toLowerCase() === blank.trim().toLowerCase();
+          newFeedback[key] = isCorrect ? 'correct' : 'incorrect';
+          
+          console.log('🔍 Bookmarks Cloze Comparison Debug:', {
+            questionId: q.id,
+            blankIndex: bi,
+            key,
+            userAnswer: `"${userAnswer}"`,
+            correctAnswer: `"${blank}"`,
+            isCorrect
+          });
         });
       } else if (q.answer) {
-        filled[q.id] = q.answer;
+        const userAnswer = answers[q.id] || '';
+        // Compare based on question type
+        let isCorrect = false;
+        if (q.type === 'T-F') {
+          // Convert UI values (R/F) to stored values (True/False) for comparison
+          let userAnswerConverted = '';
+          if (userAnswer === 'R') userAnswerConverted = 'True';
+          else if (userAnswer === 'F') userAnswerConverted = 'False';
+          else userAnswerConverted = userAnswer; // Keep original if not R/F
+          
+          isCorrect = userAnswerConverted === q.answer;
+          
+          console.log('🔍 Bookmarks T-F Comparison Debug:', {
+            questionId: q.id,
+            userAnswer,
+            userAnswerConverted,
+            correctAnswer: q.answer,
+            isCorrect
+          });
+        } else if (q.type === 'Short') {
+          // Case-insensitive comparison for short answers
+          isCorrect = userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase();
+          
+          console.log('🔍 Bookmarks Short Answer Comparison Debug:', {
+            questionId: q.id,
+            userAnswer: `"${userAnswer}"`,
+            userAnswerTrimmed: `"${userAnswer.trim().toLowerCase()}"`,
+            correctAnswer: `"${q.answer || ''}"`,
+            correctAnswerTrimmed: `"${(q.answer || '').trim().toLowerCase()}"`,
+            isCorrect
+          });
+        } else {
+          // Handle any other question types or fallback
+          console.log('🔍 Bookmarks Unknown Type Debug:', {
+            questionId: q.id,
+            type: q.type,
+            userAnswer: `"${userAnswer}"`,
+            correctAnswer: `"${q.answer || ''}"`,
+            exactMatch: userAnswer === q.answer,
+            caseInsensitiveMatch: userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase()
+          });
+          
+          // Default to case-insensitive comparison
+          isCorrect = userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase();
+        }
+        newFeedback[q.id] = isCorrect ? 'correct' : 'incorrect';
       }
     });
-    setAnswers(filled);
-    setTimeout(checkAnswers, 0);
+    
+    console.log('🔍 Bookmarks Final Feedback:', newFeedback);
+    
+    // Set the feedback and show feedback mode
+    setFeedback(newFeedback);
+    setShowFeedback(true);
   };
 
   const resetAnswers = () => {
