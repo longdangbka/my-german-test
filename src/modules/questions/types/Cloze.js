@@ -75,7 +75,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           {(!q.blanks || q.blanks.length === 0) ? (
             <div>
               <p className="text-red-600 mb-2">⚠️ No blanks - rendering as read-only</p>
-              {renderOrderedElements(q.orderedElements || [])}
+              {renderOrderedElements(q.orderedElements || [], q)}
             </div>
           ) : (
             <div>
@@ -189,11 +189,11 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
       <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            {renderOrderedElements(q.orderedElements || [])}
+            {renderOrderedElements(q.orderedElements || [], q)}
             {showFeedback && q.explanation && (
               <div className="mt-2 text-sm text-gray-600">
                 <strong>Erklärung:</strong>
-                {renderOrderedElements(q.explanationOrderedElements || [])}
+                {renderOrderedElements(q.explanationOrderedElements || [], q)}
               </div>
             )}
           </div>
@@ -249,7 +249,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           <strong className="text-blue-800 dark:text-blue-200">💡 Erklärung:</strong>
           <div className="mt-2">
             {cleanedQ.explanationOrderedElements ? (
-              renderOrderedElements(cleanedQ.explanationOrderedElements)
+              renderOrderedElements(cleanedQ.explanationOrderedElements, cleanedQ)
             ) : (
               <CleanTextRenderer text={cleanedQ.explanation} />
             )}
@@ -326,7 +326,23 @@ function renderElementsWithCloze(elements, question, value, onChange, showFeedba
       switch (element.type) {
         case 'text':
           // Add text elements to the current inline group
-          currentInlineGroup.push(element);
+          // Preserve line breaks by treating whitespace-only text with line breaks specially
+          if (element.content && element.content.trim() === '' && element.content.includes('\n')) {
+            // This is whitespace that contains line breaks - flush current group and add minimal spacing
+            flushInlineGroup();
+            // For single line breaks, just add a small margin div; for multiple line breaks, add more spacing
+            const lineBreaks = (element.content.match(/\n/g) || []).length;
+            if (lineBreaks === 1) {
+              // Single line break - add minimal spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: '0.3rem' }} />);
+            } else {
+              // Multiple line breaks - add proportional spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: `${Math.min(lineBreaks * 0.3, 1.2)}rem` }} />);
+            }
+          } else {
+            // Regular text content
+            currentInlineGroup.push(element);
+          }
           break;
         
         case 'latex':
@@ -389,8 +405,50 @@ function renderElementsWithCloze(elements, question, value, onChange, showFeedba
           break;
         
         case 'latexPlaceholder':
-          // For cloze questions, latexPlaceholders should have been converted to latex elements
-          console.warn('Found unprocessed latexPlaceholder in cloze renderer:', element.content);
+          // Convert LaTeX placeholder back to LaTeX element using stored placeholders
+          if (question.latexPlaceholders && question.latexPlaceholders.length > 0) {
+            const placeholderData = question.latexPlaceholders.find(p => p.placeholder === element.content);
+            if (placeholderData) {
+              // For single-line LaTeX expressions that were on separate lines, 
+              // treat them as block elements to preserve line breaks
+              if (placeholderData.latexType === 'inline') {
+                // Check if we should treat this as a block to preserve line structure
+                // Single-line LaTeX like $x=5$ on its own line should be treated as block
+                flushInlineGroup();
+                result.push(
+                  <GenericRenderer key={`latex-${index}`} element={element}>
+                    <div style={{ margin: '0.1rem 0' }}>
+                      {renderSimpleLatex(`$${placeholderData.latex || ''}$`)}
+                    </div>
+                  </GenericRenderer>
+                );
+              } else {
+                // Display LaTeX as block
+                flushInlineGroup();
+                result.push(
+                  <GenericRenderer key={`latex-${index}`} element={element}>
+                    <div className="my-2">
+                      {renderSimpleLatex(`$$${placeholderData.latex || ''}$$`)}
+                    </div>
+                  </GenericRenderer>
+                );
+              }
+            } else {
+              console.warn('LaTeX placeholder not found in stored placeholders:', element.content);
+              // Fallback: treat as text
+              currentInlineGroup.push({
+                type: 'text',
+                content: element.content
+              });
+            }
+          } else {
+            console.warn('No LaTeX placeholders found in question object');
+            // Fallback: treat as text
+            currentInlineGroup.push({
+              type: 'text',
+              content: element.content
+            });
+          }
           break;
         
         default:
@@ -410,7 +468,7 @@ function renderElementsWithCloze(elements, question, value, onChange, showFeedba
 
 // Function to render elements in their original order with proper inline grouping
 // Simplified function to render elements without cloze interaction (read-only) 
-function renderOrderedElements(elements) {
+function renderOrderedElements(elements, question = null) {
   if (!elements || elements.length === 0) return null;
   
   // Safety check: clean any Anki format from elements using centralized utilities
@@ -478,7 +536,23 @@ function renderOrderedElements(elements) {
       switch (element.type) {
         case 'text':
           // Add text elements to the current inline group
-          currentInlineGroup.push(element);
+          // Preserve line breaks by treating whitespace-only text with line breaks specially
+          if (element.content && element.content.trim() === '' && element.content.includes('\n')) {
+            // This is whitespace that contains line breaks - flush current group and add minimal spacing
+            flushInlineGroup();
+            // For single line breaks, just add a small margin div; for multiple line breaks, add more spacing
+            const lineBreaks = (element.content.match(/\n/g) || []).length;
+            if (lineBreaks === 1) {
+              // Single line break - add minimal spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: '0.3rem' }} />);
+            } else {
+              // Multiple line breaks - add proportional spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: `${Math.min(lineBreaks * 0.3, 1.2)}rem` }} />);
+            }
+          } else {
+            // Regular text content
+            currentInlineGroup.push(element);
+          }
           break;
         
         case 'latex':
@@ -532,8 +606,50 @@ function renderOrderedElements(elements) {
           break;
         
         case 'latexPlaceholder':
-          // LaTeX placeholders should be processed by the text rendering or converted to latex elements
-          console.warn('Found unprocessed latexPlaceholder in renderOrderedElements:', element.content);
+          // Convert LaTeX placeholder back to LaTeX element using stored placeholders
+          if (question && question.latexPlaceholders && question.latexPlaceholders.length > 0) {
+            const placeholderData = question.latexPlaceholders.find(p => p.placeholder === element.content);
+            if (placeholderData) {
+              // For single-line LaTeX expressions that were on separate lines, 
+              // treat them as block elements to preserve line breaks
+              if (placeholderData.latexType === 'inline') {
+                // Check if we should treat this as a block to preserve line structure
+                // Single-line LaTeX like $x=5$ on its own line should be treated as block
+                flushInlineGroup();
+                result.push(
+                  <GenericRenderer key={`element-${index}`} element={element}>
+                    <div className="my-1">
+                      {renderSimpleLatex(`$${placeholderData.latex || ''}$`)}
+                    </div>
+                  </GenericRenderer>
+                );
+              } else {
+                // Display LaTeX as block
+                flushInlineGroup();
+                result.push(
+                  <GenericRenderer key={`element-${index}`} element={element}>
+                    <div className="my-2">
+                      {renderSimpleLatex(`$$${placeholderData.latex || ''}$$`)}
+                    </div>
+                  </GenericRenderer>
+                );
+              }
+            } else {
+              console.warn('LaTeX placeholder not found in stored placeholders:', element.content);
+              // Fallback: treat as text
+              currentInlineGroup.push({
+                type: 'text',
+                content: element.content
+              });
+            }
+          } else {
+            console.warn('No latexPlaceholders found in question for placeholder:', element.content);
+            // Fallback: treat as text
+            currentInlineGroup.push({
+              type: 'text',
+              content: element.content
+            });
+          }
           break;
         
         default:

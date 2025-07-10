@@ -16,7 +16,7 @@ export function initFeedback(q) {
 }
 
 // Function to render elements in their original order with proper inline grouping
-function renderOrderedElements(elements) {
+function renderOrderedElements(elements, question) {
   if (!elements || elements.length === 0) return null;
   
   const result = [];
@@ -125,6 +125,31 @@ function renderOrderedElements(elements) {
           );
           break;
         
+        case 'latexPlaceholder':
+          // Convert latexPlaceholder back to proper LaTeX element
+          // Find the original LaTeX content from the question's latexPlaceholders array
+          flushInlineGroup();
+          
+          const placeholder = element.content || '';
+          const latexInfo = question?.latexPlaceholders?.find(lp => lp.placeholder === placeholder);
+          
+          if (latexInfo) {
+            // Render as a separate div to ensure proper line spacing for each LaTeX expression
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(latexInfo.original)}
+              </div>
+            );
+          } else {
+            // Fallback if latexPlaceholders info is not available
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(`$${placeholder}$`)}
+              </div>
+            );
+          }
+          break;
+        
         default:
           console.warn('Unknown element type:', element.type);
           break;
@@ -150,7 +175,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
       <div className="flex items-start space-x-4">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
           {/* Render content in original order */}
-          {renderOrderedElements(q.orderedElements || [])}
+          {renderOrderedElements(q.orderedElements || [], q)}
           {/* Fallback to old approach if orderedElements not available */}
           {(!q.orderedElements || q.orderedElements.length === 0) && (
             <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
@@ -240,7 +265,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
       {showFeedback && q.explanation && (
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
           <strong className="text-blue-800 dark:text-blue-200">💡 Erklärung:</strong>
-          {renderOrderedElements(q.explanationOrderedElements || [])}
+          {renderOrderedElements(q.explanationOrderedElements || [], q)}
           {/* Fallback to old explanation format if orderedElements not available */}
           {(!q.explanationOrderedElements || q.explanationOrderedElements.length === 0) && (
             <>

@@ -17,7 +17,7 @@ export function initFeedback(q) {
 }
 
 // Function to render elements in their original order with proper inline grouping
-function renderOrderedElements(elements) {
+function renderOrderedElements(elements, question = null) {
   if (!elements || elements.length === 0) return null;
   
   const result = [];
@@ -71,7 +71,23 @@ function renderOrderedElements(elements) {
       switch (element.type) {
         case 'text':
           // Add text elements to the current inline group
-          currentInlineGroup.push(element);
+          // Preserve line breaks by treating whitespace-only text with line breaks specially
+          if (element.content && element.content.trim() === '' && element.content.includes('\n')) {
+            // This is whitespace that contains line breaks - flush current group and add minimal spacing
+            flushInlineGroup();
+            // For single line breaks, just add a small margin div; for multiple line breaks, add more spacing
+            const lineBreaks = (element.content.match(/\n/g) || []).length;
+            if (lineBreaks === 1) {
+              // Single line break - add minimal spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: '0.3rem' }} />);
+            } else {
+              // Multiple line breaks - add proportional spacing
+              result.push(<div key={`spacing-${result.length}`} style={{ height: `${Math.min(lineBreaks * 0.3, 1.2)}rem` }} />);
+            }
+          } else {
+            // Regular text content
+            currentInlineGroup.push(element);
+          }
           break;
         
         case 'latex':
@@ -126,6 +142,36 @@ function renderOrderedElements(elements) {
           );
           break;
         
+        case 'latexPlaceholder':
+          // Convert LaTeX placeholder back to LaTeX content using question's latexPlaceholders
+          if (question && question.latexPlaceholders && element.content) {
+            const placeholderIndex = question.latexPlaceholders.findIndex(p => p.placeholder === element.content);
+            if (placeholderIndex !== -1) {
+              const latexContent = question.latexPlaceholders[placeholderIndex].latex;
+              // Render each LaTeX expression as a separate block element with minimal spacing
+              // to preserve line structure while avoiding excessive spacing
+              flushInlineGroup();
+              result.push(
+                <div key={`element-${index}`} style={{ display: 'block', margin: '0.1rem 0' }}>
+                  {renderSimpleLatex(`$${latexContent}$`)}
+                </div>
+              );
+            } else {
+              // Placeholder not found, treat as text
+              currentInlineGroup.push({
+                type: 'text',
+                content: element.content || ''
+              });
+            }
+          } else {
+            // No question context or latexPlaceholders, treat as text
+            currentInlineGroup.push({
+              type: 'text',
+              content: element.content || ''
+            });
+          }
+          break;
+        
         default:
           console.warn('Unknown element type:', element.type);
           break;
@@ -151,7 +197,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
       <div className="flex items-start space-x-4">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
           {/* Render question content in original order */}
-          {renderOrderedElements(q.orderedElements || [])}
+          {renderOrderedElements(q.orderedElements || [], q)}
           {/* Fallback to old approach if orderedElements not available */}
           {(!q.orderedElements || q.orderedElements.length === 0) && (
             <div style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>

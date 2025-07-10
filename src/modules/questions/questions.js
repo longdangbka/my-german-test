@@ -183,9 +183,9 @@ function parseContentWithOrder(text, isCloze = false) {
   nonOverlappingMatches.forEach(({ type, match, start, end, content }) => {
     // Add text before this match
     if (start > currentPos) {
-      const textBefore = remaining.slice(currentPos, start).trim();
-      if (textBefore) {
-        // Text is already processed for cloze questions (above)
+      const textBefore = remaining.slice(currentPos, start);
+      if (textBefore.trim() || textBefore.includes('\n')) {
+        // Preserve text that has content OR contains line breaks
         elements.push({ type: 'text', content: textBefore });
       }
     }
@@ -231,9 +231,9 @@ function parseContentWithOrder(text, isCloze = false) {
 
   // Add remaining text
   if (currentPos < remaining.length) {
-    const remainingText = remaining.slice(currentPos).trim();
-    if (remainingText) {
-      // Text is already processed for cloze questions (above)
+    const remainingText = remaining.slice(currentPos);
+    if (remainingText.trim() || remainingText.includes('\n')) {
+      // Preserve text that has content OR contains line breaks
       elements.push({ type: 'text', content: remainingText });
     }
   }
@@ -623,6 +623,8 @@ function parseStandardMarkdown(md) {
           // Store raw content for bookmarking
           rawText: rawQ,
           rawExplanation: rawE,
+          // Store LaTeX placeholders for proper rendering
+          latexPlaceholders: latexPlaceholders || [],
         };
 
         // CRITICAL: Ensure the question has a valid blanks array using centralized function
