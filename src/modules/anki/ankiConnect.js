@@ -517,13 +517,13 @@ export async function fileToBase64(fileUrl) {
 export function convertLatexForAnki(latex, isDisplay = false) {
   if (!latex) return '';
   
-  // Anki uses MathJax, so we wrap in appropriate delimiters
+  // Keep LaTeX in original format for Anki
   if (isDisplay) {
-    // Display math: \[ ... \] or $$ ... $$
-    return `\\[${latex}\\]`;
+    // Display math: $$ ... $$
+    return `$$${latex}$$`;
   } else {
-    // Inline math: \( ... \) or $ ... $
-    return `\\(${latex}\\)`;
+    // Inline math: $ ... $
+    return `$${latex}$`;
   }
 }
 
@@ -985,38 +985,64 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
   // Map fields based on what's available in the note type
   if (finalNoteType === 'Cloze') {
     // For cloze cards, content has already been processed above
-    if (availableFields.includes('Text')) {
-      fields['Text'] = questionText;
-      console.log('🔧 PREPARE DEBUG - Set Text field for Cloze card:', fields['Text']);
+    // Check for common Cloze field names
+    const clozeTextFields = ['Text', 'Q', 'Front', 'Question'];
+    const clozeExtraFields = ['Extra', 'E', 'A', 'Back', 'Notes'];
+    
+    const textField = clozeTextFields.find(field => availableFields.includes(field));
+    if (textField) {
+      fields[textField] = questionText;
+      console.log('🔧 PREPARE DEBUG - Set', textField, 'field for Cloze card:', fields[textField]);
     }
-    if (explanationText.trim() && availableFields.includes('Extra')) {
-      fields['Extra'] = explanationText;
-      console.log('🔧 PREPARE DEBUG - Set Extra field for Cloze card:', fields['Extra']);
+    
+    if (explanationText.trim()) {
+      const extraField = clozeExtraFields.find(field => availableFields.includes(field));
+      if (extraField) {
+        fields[extraField] = explanationText;
+        console.log('🔧 PREPARE DEBUG - Set', extraField, 'field for Cloze card:', fields[extraField]);
+      }
     }
   } else {
     // For other note types, use processed content
-    const questionFieldNames = ['Front', 'Question', 'Prompt'];
-    const answerFieldNames = ['Back', 'Answer', 'Response'];
-    const explanationFieldNames = ['Extra', 'Explanation', 'Notes'];
+    const questionFieldNames = ['Front', 'Question', 'Prompt', 'Q'];
+    const answerFieldNames = ['Back', 'Answer', 'Response', 'A'];
+    const explanationFieldNames = ['Extra', 'Explanation', 'Notes', 'E'];
+    
+    console.log('🔧 PREPARE DEBUG - Looking for question field in:', questionFieldNames);
+    console.log('🔧 PREPARE DEBUG - Available fields:', availableFields);
     
     // Set question field with processed content
     const questionField = questionFieldNames.find(field => availableFields.includes(field));
+    console.log('🔧 PREPARE DEBUG - Found question field:', questionField);
     if (questionField) {
       fields[questionField] = questionText;
+      console.log('🔧 PREPARE DEBUG - Set', questionField, 'field for non-Cloze card:', fields[questionField]);
+    } else {
+      console.log('🔧 PREPARE DEBUG - NO QUESTION FIELD FOUND!');
     }
     
     // Set answer field with raw content
     const answerField = answerFieldNames.find(field => availableFields.includes(field));
+    console.log('🔧 PREPARE DEBUG - Found answer field:', answerField);
     if (answerField) {
       fields[answerField] = question.answer || 'No answer provided';
+      console.log('🔧 PREPARE DEBUG - Set', answerField, 'field for non-Cloze card:', fields[answerField]);
+    } else {
+      console.log('🔧 PREPARE DEBUG - NO ANSWER FIELD FOUND!');
     }
     
     // Set explanation field with processed content
     if (explanationText.trim()) {
       const explanationField = explanationFieldNames.find(field => availableFields.includes(field));
+      console.log('🔧 PREPARE DEBUG - Found explanation field:', explanationField);
       if (explanationField) {
         fields[explanationField] = explanationText;
+        console.log('🔧 PREPARE DEBUG - Set', explanationField, 'field for non-Cloze card:', fields[explanationField]);
+      } else {
+        console.log('🔧 PREPARE DEBUG - NO EXPLANATION FIELD FOUND!');
       }
+    } else {
+      console.log('🔧 PREPARE DEBUG - NO EXPLANATION TEXT TO SET');
     }
   }
   

@@ -11,7 +11,7 @@ TYPE: Short
 
 Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
 
-ANSWER: Einstein
+A: Einstein
 
 --- end-question
 
@@ -56,7 +56,7 @@ return (
 
 ```
 
-| a   | b   |
+| $E = mc^2$   | b   |
 | --- | --- |
 | 1   | 2   |
 
