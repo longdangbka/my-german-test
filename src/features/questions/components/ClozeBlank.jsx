@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { ClozeBlank as CoreClozeBlank } from '../../../cloze.js';
+import { ClozeBlank as CoreClozeBlank } from '../../cloze';
 
 /**
  * React wrapper for the core ClozeBlank component from cloze.js
@@ -32,7 +32,7 @@ export function ClozeText({
   renderText = null
 }) {
   // Import the parsing and rendering functions dynamically to avoid circular deps
-  const { parseClozes, renderWithInputs } = require('../../../cloze.js');
+  const { parseClozes, renderWithInputs } = require('../../cloze');
   
   if (!text) return null;
   

@@ -207,8 +207,6 @@ const SortDropdown = ({ sortBy, sortOrder, onSortChange }) => {
     { value: 'modified', label: 'Sort by Modified Date', icon: '📝' }
   ];
   
-  const currentOption = sortOptions.find(opt => opt.value === sortBy);
-  
   return (
     <div className="relative">
       <button

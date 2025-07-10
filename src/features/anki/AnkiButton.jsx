@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { addNoteToAnki, testAnkiConnection, mapQuestionTypeToNoteType } from './ankiConnect';
 
-const AnkiButton = ({ question, deckName = 'Default' }) => {
+const AnkiButton = ({ question, deckName = 'Default', compact = false }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('idle'); // idle, success, error
 
@@ -83,18 +83,26 @@ const AnkiButton = ({ question, deckName = 'Default' }) => {
   const getStatusMessage = () => {
     if (status === 'success') return 'Added to Anki!';
     if (status === 'error') return 'Failed to add';
+    if (compact) return 'Anki'; // Shorter text for compact mode
     return `Send to Anki (${getNoteTypeDisplay()})`;
+  };
+
+  const getCompactClasses = () => {
+    if (compact) {
+      return 'px-2 py-1 text-xs'; // Smaller padding and text for compact mode
+    }
+    return 'px-3 py-1.5 text-xs'; // Default sizing
   };
 
   return (
     <button
       onClick={handleSendToAnki}
       disabled={loading}
-      className={`inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${getButtonColor()} bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600`}
+      className={`inline-flex items-center ${getCompactClasses()} font-medium rounded-md transition-all duration-200 ${getButtonColor()} bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600`}
       title={`Send question to Anki as ${getNoteTypeDisplay()} note type`}
     >
       {getButtonIcon()}
-      <span className="ml-2">{getStatusMessage()}</span>
+      <span className={compact ? "ml-1" : "ml-2"}>{getStatusMessage()}</span>
     </button>
   );
 };

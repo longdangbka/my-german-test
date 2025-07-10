@@ -114,10 +114,12 @@ export function parseClozeMarkers(text) {
   return markers;
 }
 
-export default {
+const constants = {
   QUESTION_TYPES,
   THEMES,
   FEEDBACK_STATES,
   PATHS,
   PATTERNS,
 };
+
+export default constants;

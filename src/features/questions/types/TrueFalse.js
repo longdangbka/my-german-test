@@ -11,13 +11,12 @@ import { renderSimpleLatex } from '../../../shared/utils/simpleLatexRenderer';
 export function initAnswers(q) {
   return { [q.id]: '' };
 }
-
 export function initFeedback(q) {
   return { [q.id]: '' };
 }
 
 // Function to render elements in their original order with proper inline grouping
-function renderOrderedElements(elements, question = null) {
+function renderOrderedElements(elements, question) {
   if (!elements || elements.length === 0) return null;
   
   const result = [];
@@ -71,23 +70,7 @@ function renderOrderedElements(elements, question = null) {
       switch (element.type) {
         case 'text':
           // Add text elements to the current inline group
-          // Preserve line breaks by treating whitespace-only text with line breaks specially
-          if (element.content && element.content.trim() === '' && element.content.includes('\n')) {
-            // This is whitespace that contains line breaks - flush current group and add minimal spacing
-            flushInlineGroup();
-            // For single line breaks, just add a small margin div; for multiple line breaks, add more spacing
-            const lineBreaks = (element.content.match(/\n/g) || []).length;
-            if (lineBreaks === 1) {
-              // Single line break - add minimal spacing
-              result.push(<div key={`spacing-${result.length}`} style={{ height: '0.3rem' }} />);
-            } else {
-              // Multiple line breaks - add proportional spacing
-              result.push(<div key={`spacing-${result.length}`} style={{ height: `${Math.min(lineBreaks * 0.3, 1.2)}rem` }} />);
-            }
-          } else {
-            // Regular text content
-            currentInlineGroup.push(element);
-          }
+          currentInlineGroup.push(element);
           break;
         
         case 'latex':
@@ -143,32 +126,27 @@ function renderOrderedElements(elements, question = null) {
           break;
         
         case 'latexPlaceholder':
-          // Convert LaTeX placeholder back to LaTeX content using question's latexPlaceholders
-          if (question && question.latexPlaceholders && element.content) {
-            const placeholderIndex = question.latexPlaceholders.findIndex(p => p.placeholder === element.content);
-            if (placeholderIndex !== -1) {
-              const latexContent = question.latexPlaceholders[placeholderIndex].latex;
-              // Render each LaTeX expression as a separate block element with minimal spacing
-              // to preserve line structure while avoiding excessive spacing
-              flushInlineGroup();
-              result.push(
-                <div key={`element-${index}`} style={{ display: 'block', margin: '0.1rem 0' }}>
-                  {renderSimpleLatex(`$${latexContent}$`)}
-                </div>
-              );
-            } else {
-              // Placeholder not found, treat as text
-              currentInlineGroup.push({
-                type: 'text',
-                content: element.content || ''
-              });
-            }
+          // Convert latexPlaceholder back to proper LaTeX element
+          // Find the original LaTeX content from the question's latexPlaceholders array
+          flushInlineGroup();
+          
+          const placeholder = element.content || '';
+          const latexInfo = question?.latexPlaceholders?.find(lp => lp.placeholder === placeholder);
+          
+          if (latexInfo) {
+            // Render as a separate div to ensure proper line spacing for each LaTeX expression
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(latexInfo.original)}
+              </div>
+            );
           } else {
-            // No question context or latexPlaceholders, treat as text
-            currentInlineGroup.push({
-              type: 'text',
-              content: element.content || ''
-            });
+            // Fallback if latexPlaceholders info is not available
+            result.push(
+              <div key={`element-${index}`} className="my-2">
+                {renderSimpleLatex(`$${placeholder}$`)}
+              </div>
+            );
           }
           break;
         
@@ -196,7 +174,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
       <div className="flex items-start space-x-4">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
-          {/* Render question content in original order */}
+          {/* Render content in original order */}
           {renderOrderedElements(q.orderedElements || [], q)}
           {/* Fallback to old approach if orderedElements not available */}
           {(!q.orderedElements || q.orderedElements.length === 0) && (
@@ -204,71 +182,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
               {renderSimpleLatex(q.text)}
             </div>
           )}
-          
-          {/* Answer input section */}
-          <div className="mt-4">
-            {showFeedback ? (
-              // When showing feedback, display user input, symbol, and expected answer
-              <div className="space-y-3">
-                <div className="flex items-center space-x-3 flex-wrap">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Your answer:</span>
-                  {/* Show what the user typed (if anything) with colored background */}
-                  {questionValue ? (
-                    <>
-                      <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
-                        questionFeedback === 'correct'
-                          ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
-                          : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
-                      }`}>
-                        {questionValue}
-                      </span>
-                      {/* Show correct/incorrect symbol */}
-                      <span className={questionFeedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
-                        {questionFeedback === 'correct' ? '✅' : '❌'}
-                      </span>
-                    </>
-                  ) : (
-                    // If user left blank, show a placeholder and a cross
-                    <>
-                      <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
-                        (no answer)
-                      </span>
-                      <span className="text-red-500 dark:text-red-400">❌</span>
-                    </>
-                  )}
-                </div>
-                
-                {/* Show expected answer */}
-                <div className="flex items-center space-x-3">
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Correct answer:</span>
-                  <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
-                    {renderSimpleLatex(q.answer || '')}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              // When not showing feedback, display the input field
-              <div className="flex items-center space-x-3">
-                <label htmlFor={q.id} className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Your answer:
-                </label>
-                <input
-                  id={q.id}
-                  name={q.id}
-                  type="text"
-                  value={questionValue}
-                  onChange={onChange}
-                  placeholder="Type your answer here..."
-                  autoComplete="off"
-                  autoCorrect="off"
-                  spellCheck="false"
-                  className="answer-input border rounded-lg px-3 py-2 flex-1 max-w-md focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 transition-all duration-200"
-                />
-              </div>
-            )}
-          </div>
         </div>
-        
         <div className="flex items-center space-x-2">
           <BookmarkButton 
             question={q} 
@@ -276,8 +190,44 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             questionIndex={seq}
             groupAudio={groupAudio}
           />
-          {showAnkiButton && (
-            <AnkiButton question={q} />
+          {showFeedback ? (
+            // When showing feedback, display user selection and expected answer
+            <div className="flex items-center space-x-2">
+              {/* Show what the user selected (if anything) */}
+              {questionValue ? (
+                <>
+                  <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                    questionFeedback === 'correct'
+                      ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                      : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                  }`}>
+                    {questionValue === 'R' ? '✓ Richtig' : '✗ Falsch'}
+                  </span>
+                  {/* Show correct/incorrect symbol */}
+                  <span className={questionFeedback === 'correct' ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                    {questionFeedback === 'correct' ? '✅' : '❌'}
+                  </span>
+                </>
+              ) : (
+                // If user didn't select anything, show placeholder and cross
+                <>
+                  <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                    (not selected)
+                  </span>
+                  <span className="text-red-500 dark:text-red-400">❌</span>
+                </>
+              )}
+              {/* Show expected answer in gray background */}
+              <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                {q.answer === 'True' ? '✓ Richtig' : '✗ Falsch'}
+              </span>
+            </div>
+          ) : (
+            <select name={q.id} value={questionValue} onChange={onChange} className="answer-input border rounded-lg px-3 py-2 min-w-[120px]">
+              <option value="">– Select –</option>
+              <option value="R">✓ Richtig</option>
+              <option value="F">✗ Falsch</option>
+            </select>
           )}
         </div>
       </div>
@@ -310,11 +260,10 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
         </>
       )}
       
-      {/* Show explanation when feedback is visible */}
       {showFeedback && q.explanation && (
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
           <strong className="text-blue-800 dark:text-blue-200">💡 Erklärung:</strong>
-          {renderOrderedElements(q.explanationOrderedElements || [])}
+          {renderOrderedElements(q.explanationOrderedElements || [], q)}
           {/* Fallback to old explanation format if orderedElements not available */}
           {(!q.explanationOrderedElements || q.explanationOrderedElements.length === 0) && (
             <>
@@ -351,8 +300,11 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
         </div>
       )}
       
-      {/* Question ID display */}
-      <div className="mt-2 flex justify-end">
+      {/* Question ID display and Anki button */}
+      <div className="mt-2 flex justify-end items-center space-x-2">
+        {showAnkiButton && (
+          <AnkiButton question={q} compact={true} />
+        )}
         <QuestionIdDisplay questionId={q.id} />
       </div>
     </div>

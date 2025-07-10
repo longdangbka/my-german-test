@@ -14,7 +14,7 @@ import {
   findCloze, 
   getClozeIds, 
   replaceWithBlanks as toBlanks 
-} from '../../../cloze.js';
+} from '../../cloze';
 
 // Import focused cloze rendering components
 import {
@@ -196,24 +196,23 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
                 {renderOrderedElements(q.explanationOrderedElements || [], q)}
               </div>
             )}
-          </div>
-          <div className="flex items-center space-x-2">
-            <BookmarkButton 
-              question={q} 
-              quizName={quizName} 
-              questionIndex={seq}
-              groupAudio={groupAudio}
-            />
-            {showAnkiButton && (
-              <AnkiButton question={q} />
-            )}
-          </div>
+          </div>        <div className="flex items-center space-x-2">
+          <BookmarkButton 
+            question={q} 
+            quizName={quizName} 
+            questionIndex={seq}
+            groupAudio={groupAudio}
+          />
         </div>
-        
-        {/* Question ID display */}
-        <div className="mt-2 flex justify-end">
-          <QuestionIdDisplay questionId={q.id} />
-        </div>
+      </div>
+      
+      {/* Question ID display and Anki button */}
+      <div className="mt-2 flex justify-end items-center space-x-2">
+        {showAnkiButton && (
+          <AnkiButton question={q} compact={true} />
+        )}
+        <QuestionIdDisplay questionId={q.id} />
+      </div>
       </div>
     );
   }
@@ -235,14 +234,14 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             questionIndex={seq}
             groupAudio={groupAudio}
           />
-          {showAnkiButton && (
-            <AnkiButton question={q} />
-          )}
         </div>
       </div>
       
-      {/* Question ID display */}
-      <div className="mt-2 flex justify-end">
+      {/* Question ID display and Anki button */}
+      <div className="mt-2 flex justify-end items-center space-x-2">
+        {showAnkiButton && (
+          <AnkiButton question={q} compact={true} />
+        )}
         <QuestionIdDisplay questionId={cleanedQ.id} />
       </div>
       

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../app/providers/ThemeProvider';
 
 const ThemeSelector = () => {
   const { themeMode, setThemeMode, activeTheme, systemTheme } = useTheme();

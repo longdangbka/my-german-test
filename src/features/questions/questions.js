@@ -5,15 +5,13 @@
 import { 
   findCloze, 
   replaceWithBlanks,
-  extractClozeBlanksByGroup,
   extractAllClozeBlanks,
   ensureClozeQuestion,
   processClozeElements,
   hasCloze,
   validateClozeText,
-  toIdAwareBlanks,
   toSequentialBlanks
-} from '../../cloze.js';
+} from '../cloze';
 
 // Import question ID management utilities
 import { 

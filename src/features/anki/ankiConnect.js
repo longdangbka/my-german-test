@@ -407,6 +407,7 @@ function processLatexAvoidingClozes(text, latexRegex, isDisplay) {
   
   // First, extract all cloze deletions and their positions
   // Matches: {{c1:[content]}} and {{c1::content}}
+  // eslint-disable-next-line no-useless-escape
   const clozeRegex = /\{\{c(\d+)?(::|:\[)[^\}]+\}\}/g;
   const clozes = [];
   let match;

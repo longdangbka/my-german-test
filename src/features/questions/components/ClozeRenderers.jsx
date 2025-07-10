@@ -11,7 +11,7 @@ import {
   stripMarkers, 
   findCloze, 
   ClozeBlank 
-} from '../../../cloze.js';
+} from '../../cloze';
 
 /**
  * Component to render inline cloze text with input fields or feedback.
@@ -70,7 +70,6 @@ export function InlineClozeText({
   // Handle raw cloze markers (fallback for unprocessed clozes)
   // CRITICAL FIX: Use global tracking if available, otherwise local tracking
   const renderedClozeIds = globalRenderedClozeIds || new Set();
-  const isLocalTracking = !globalRenderedClozeIds;
   
   let result = [];
   let lastIndex = 0;
