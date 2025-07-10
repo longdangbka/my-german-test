@@ -123,7 +123,7 @@ ID: ${questionId}
           // Add audio information if found
           if (audioFile) {
             bookmarkEntry += `
-AUDIO: ${audioFile}`;
+AUDIO: ![[${audioFile}]]`;
           }
 
           bookmarkEntry += `
