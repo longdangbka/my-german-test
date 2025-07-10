@@ -191,6 +191,13 @@ function App() {
         </div>
         
         {(qd.currentGroup.transcript || qd.currentGroup.audioFile || qd.currentGroup.questions?.some(q => q.audioFile)) && <AudioPlayer group={qd.currentGroup} />}
+        {/* DEBUG: Log current group info */}
+        {console.log('🚨🚨🚨 CURRENT GROUP:', { 
+          title: qd.currentGroup.title, 
+          index: qd.currentIndex, 
+          questionCount: qd.currentGroup.questions?.length,
+          questions: qd.currentGroup.questions?.map(q => ({ id: q.id, type: q.type, question: q.question?.substring(0, 100) }))
+        })}
         <QuestionList
           questions={qd.currentGroup.questions}
           answers={qd.answers}

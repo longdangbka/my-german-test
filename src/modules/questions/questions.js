@@ -1,7 +1,19 @@
 // questions.js
 // Dynamically load and parse all standard question files from public/vault
 
-import { parseClozeMarkers } from '../../shared/constants/index.js';
+// Import ALL centralized cloze utilities for consistent processing across the entire parser
+import { 
+  findCloze, 
+  replaceWithBlanks,
+  extractClozeBlanksByGroup,
+  extractAllClozeBlanks,
+  ensureClozeQuestion,
+  processClozeElements,
+  hasCloze,
+  validateClozeText,
+  toIdAwareBlanks,
+  toSequentialBlanks
+} from '../../cloze.js';
 
 export async function loadQuestionGroups(signal, filename = 'Question-Sample.md') {
   console.log('🔍 loadQuestionGroups - Starting with filename:', filename);
@@ -63,55 +75,19 @@ function parseContentWithOrder(text, isCloze = false) {
   const elements = [];
   let remaining = text;
 
-  // For CLOZE questions, we need to protect LaTeX inside cloze markers from being processed
-  let protectedText = remaining;
-  const clozeProtections = [];
+  console.log('🔍 PARSE ORDER - Processing text:', text);
+  console.log('🔍 PARSE ORDER - Is cloze question:', isCloze);
   
+  // For CLOZE questions, validate the cloze content using centralized utilities
   if (isCloze) {
-    // First, find all cloze markers and replace LaTeX inside them with temporary protection markers
-    // Support both syntaxes: {{c::content}} and {{content}}
-    const clozeRegexNew = /\{\{c::([^}]+)\}\}/g;  // New syntax
-    const clozeRegexLegacy = /\{\{([^}]+)\}\}/g;    // Legacy syntax
-    let protectionIndex = 0;
+    const validation = validateClozeText(text);
+    console.log('🔍 PARSE ORDER - Cloze validation:', validation);
     
-    // Helper function to protect LaTeX inside cloze content
-    const protectLatexInCloze = (match, content) => {
-      let protectedContent = content;
-      
-      // Protect inline LaTeX $...$
-      protectedContent = protectedContent.replace(/\$([^$\n]+?)\$/g, (latexMatch, latexContent) => {
-        const protectionMarker = `__CLOZE_LATEX_PROTECTION_${protectionIndex}__`;
-        clozeProtections.push({ marker: protectionMarker, original: latexMatch });
-        protectionIndex++;
-        return protectionMarker;
-      });
-      
-      // Protect display LaTeX $$...$$
-      protectedContent = protectedContent.replace(/\$\$([\s\S]+?)\$\$/g, (latexMatch, latexContent) => {
-        const protectionMarker = `__CLOZE_LATEX_PROTECTION_${protectionIndex}__`;
-        clozeProtections.push({ marker: protectionMarker, original: latexMatch });
-        protectionIndex++;
-        return protectionMarker;
-      });
-      
-      return match.includes('{{c::') ? `{{c::${protectedContent}}}` : `{{${protectedContent}}}`;
-    };
-    
-    // Process new syntax first
-    protectedText = remaining.replace(clozeRegexNew, protectLatexInCloze);
-    
-    // Then process legacy syntax (but be careful not to double-process)
-    protectedText = protectedText.replace(clozeRegexLegacy, (match, content) => {
-      // Skip if this is already part of new syntax (contains c::)
-      if (match.includes('c::')) {
-        return match;
-      }
-      return protectLatexInCloze(match, content);
-    });
-    
-    console.log('🔍 PARSE ORDER - Original text:', remaining);
-    console.log('🔍 PARSE ORDER - Protected text:', protectedText);
-    console.log('🔍 PARSE ORDER - Cloze protections:', clozeProtections);
+    // CRITICAL FIX: For cloze questions, convert cloze markers to sequential blanks FIRST
+    // before processing LaTeX, so that LaTeX inside cloze markers doesn't break the parsing
+    // Use sequential blanks so each cloze marker gets its own unique input field
+    remaining = toSequentialBlanks(remaining);
+    console.log('🔍 PARSE ORDER - After cloze processing:', remaining);
   }
 
   // Create a list of all content patterns with their positions
@@ -129,8 +105,7 @@ function parseContentWithOrder(text, isCloze = false) {
   patterns.forEach(pattern => {
     let match;
     const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-    const textToSearch = isCloze ? protectedText : remaining;
-    while ((match = regex.exec(textToSearch)) !== null) {
+    while ((match = regex.exec(remaining)) !== null) {
       allMatches.push({
         type: pattern.type,
         match: match,
@@ -161,21 +136,14 @@ function parseContentWithOrder(text, isCloze = false) {
   let currentPos = 0;
   const latexPlaceholders = [];
   let placeholderIndex = 0;
-  const textToProcess = isCloze ? protectedText : remaining;
 
   nonOverlappingMatches.forEach(({ type, match, start, end, content }) => {
     // Add text before this match
     if (start > currentPos) {
-      const textBefore = textToProcess.slice(currentPos, start).trim();
+      const textBefore = remaining.slice(currentPos, start).trim();
       if (textBefore) {
-        // Restore cloze protections in text elements if this is a cloze question
-        let finalTextBefore = textBefore;
-        if (isCloze && clozeProtections.length > 0) {
-          clozeProtections.forEach(({ marker, original }) => {
-            finalTextBefore = finalTextBefore.replace(marker, original);
-          });
-        }
-        elements.push({ type: 'text', content: finalTextBefore });
+        // Text is already processed for cloze questions (above)
+        elements.push({ type: 'text', content: textBefore });
       }
     }
 
@@ -188,9 +156,8 @@ function parseContentWithOrder(text, isCloze = false) {
         elements.push({ type: 'codeBlock', content: { lang: match[1], code: match[2] } });
         break;
       case 'table':
-        // For CLOZE questions, preserve table content as-is (don't convert to HTML yet)
-        // The cloze markers inside tables will be processed later
-        elements.push({ type: 'table', content: match[0] });
+        // Table content is already processed for cloze questions (above)
+        elements.push({ type: 'table', content: content });
         break;
       case 'latexDisplay':
         if (isCloze) {
@@ -220,17 +187,11 @@ function parseContentWithOrder(text, isCloze = false) {
   });
 
   // Add remaining text
-  if (currentPos < textToProcess.length) {
-    const remainingText = textToProcess.slice(currentPos).trim();
+  if (currentPos < remaining.length) {
+    const remainingText = remaining.slice(currentPos).trim();
     if (remainingText) {
-      // Restore cloze protections in remaining text if this is a cloze question
-      let finalRemainingText = remainingText;
-      if (isCloze && clozeProtections.length > 0) {
-        clozeProtections.forEach(({ marker, original }) => {
-          finalRemainingText = finalRemainingText.replace(marker, original);
-        });
-      }
-      elements.push({ type: 'text', content: finalRemainingText });
+      // Text is already processed for cloze questions (above)
+      elements.push({ type: 'text', content: remainingText });
     }
   }
 
@@ -262,21 +223,12 @@ function extractContentElements(text, isCloze = false) {
         break;
       case 'table':
         if (isCloze) {
-          // For CLOZE questions, preserve table content as markdown and extract cloze markers
-          const tableContent = element.content;
-          // Extract cloze markers from table before conversion for text processing
-          const tableMarkers = parseClozeMarkers(tableContent);
-          let processedTableContent = tableContent;
-          // Replace cloze markers with blanks, from end to start to maintain positions
-          for (let i = tableMarkers.length - 1; i >= 0; i--) {
-            const marker = tableMarkers[i];
-            processedTableContent = processedTableContent.slice(0, marker.start) + '_____' + processedTableContent.slice(marker.end);
-          }
-          cleanedText += processedTableContent + ' ';
-          htmlTables.push(mdTableToHtml(tableContent));
-          // For ordered elements in CLOZE questions, keep original cloze markers in the HTML
-          // so TableWithLatex can render them as input fields
-          element.content = mdTableToHtml(tableContent);
+          // For CLOZE questions, table content is already processed (clozes converted to blanks)
+          // Just convert to HTML and store
+          cleanedText += element.content + ' ';
+          htmlTables.push(mdTableToHtml(element.content));
+          // For ordered elements, store the HTML version
+          element.content = mdTableToHtml(element.content);
         } else {
           htmlTables.push(mdTableToHtml(element.content));
           // For ordered elements, store the HTML version
@@ -525,97 +477,81 @@ function parseStandardMarkdown(md) {
       if (type === 'CLOZE') {
         console.log('🔍 MAIN PARSER - Processing CLOZE question. Raw Q:', rawQ);
         
-        // Extract cloze markers from the original raw content using the new parser
-        const clozeMarkers = parseClozeMarkers(rawQ);
-        console.log('🔍 MAIN PARSER - Found cloze markers:', clozeMarkers);
+        // Validate cloze content for debugging
+        const validation = validateClozeText(rawQ);
+        console.log('🔍 MAIN PARSER - Cloze validation:', validation);
         
-        const blanks = clozeMarkers.map(marker => marker.content);
+        // Use centralized cloze utilities for consistent processing
+        const clozeData = findCloze(rawQ);
+        console.log('🔍 MAIN PARSER - Found cloze markers:', clozeData);
+        
+        // Extract blanks individually (not grouped by ID) for proper form handling
+        let blanks = extractAllClozeBlanks(rawQ);
         console.log('🔍 MAIN PARSER - Extracted blanks:', blanks);
 
-        // Replace cloze markers with blanks, using proper replacement
-        let text = rawQ;
-        // Replace from end to start to maintain positions
-        for (let i = clozeMarkers.length - 1; i >= 0; i--) {
-          const marker = clozeMarkers[i];
-          text = text.slice(0, marker.start) + '_____' + text.slice(marker.end);
+        // CRITICAL FIX: If no blanks found but cloze markers exist, ensure we create blanks
+        if (blanks.length === 0 && hasCloze(rawQ)) {
+          console.warn('� MAIN PARSER - Found cloze markers but no blanks extracted!');
+          console.warn('🚨 MAIN PARSER - Raw text that failed:', rawQ);
+          // Try to extract individual cloze content as fallback
+          blanks = clozeData.map(cloze => cloze.content);
+          console.log('🔍 MAIN PARSER - Fallback blanks:', blanks);
         }
+
+        // Use centralized replaceWithBlanks function for consistent display
+        let text = replaceWithBlanks(rawQ);
         console.log('🔍 MAIN PARSER - Processed text with blanks:', text);
+
+        // CRITICAL FIX: Ensure blanks array is populated for cloze questions
+        if (blanks.length === 0 && text.includes('_____')) {
+          console.log('🔍 MAIN PARSER - Creating blanks from processed text as fallback');
+          // Extract blanks from the original raw text, not the processed text
+          blanks = extractAllClozeBlanks(rawQ);
+          console.log('🔍 MAIN PARSER - Fallback blanks:', blanks);
+        }
         
-        // Also process the ordered elements to replace cloze markers in text elements
-        const processedOrderedElements = questionOrderedElements.map(element => {
-          if (element.type === 'text') {
-            let processedContent = element.content;
-            const elementMarkers = parseClozeMarkers(processedContent);
-            console.log(`🔍 MAIN PARSER - Processing text element. Original: "${processedContent}", markers:`, elementMarkers);
-            // Replace from end to start to maintain positions
-            for (let i = elementMarkers.length - 1; i >= 0; i--) {
-              const marker = elementMarkers[i];
-              processedContent = processedContent.slice(0, marker.start) + '_____' + processedContent.slice(marker.end);
-            }
-            console.log(`🔍 MAIN PARSER - Processed text element: "${processedContent}"`);
-            // Restore LaTeX placeholders in the ordered elements too
-            if (latexPlaceholders && latexPlaceholders.length > 0) {
-              latexPlaceholders.forEach(({ placeholder, original }) => {
-                processedContent = processedContent.replace(placeholder, original);
-              });
-            }
-            return { ...element, content: processedContent };
-          } else if (element.type === 'table') {
-            // For tables, the cloze markers should already be converted to blanks in the HTML
-            // This was handled in extractContentElements function
-            return element;
-          } else if (element.type === 'latexPlaceholder') {
-            // Convert LaTeX placeholders back to latex elements
-            const latexInfo = latexPlaceholders.find(lp => lp.placeholder === element.content);
-            if (latexInfo) {
-              return {
-                type: 'latex',
-                content: {
-                  latex: latexInfo.latex,
-                  latexType: latexInfo.latexType
-                }
-              };
-            }
-          }
-          return element;
-        });
+        // Process ordered elements using centralized function - convert clozes to sequential blanks for display
+        const processedOrderedElements = processClozeElements(questionOrderedElements, { stripMarkers: false, toSequential: true });
         
-        console.log('🔍 MAIN PARSER - Final processed ordered elements:', processedOrderedElements);
-        
-        // Restore LaTeX placeholders back to original LaTeX (for CLOZE questions)
-        if (type === 'CLOZE' && latexPlaceholders && latexPlaceholders.length > 0) {
+        // Apply LaTeX restoration if needed
+        if (latexPlaceholders && latexPlaceholders.length > 0) {
           latexPlaceholders.forEach(({ placeholder, original }) => {
             text = text.replace(placeholder, original);
           });
-        }
-
-        // For the blanks array, restore LaTeX placeholders so they contain the original LaTeX
-        const processedBlanks = blanks.map(blank => {
-          let processedBlank = blank;
-          if (latexPlaceholders && latexPlaceholders.length > 0) {
+          
+          // Restore LaTeX in processed elements
+          processedOrderedElements.forEach(element => {
+            if (element.type === 'text' && element.content) {
+              latexPlaceholders.forEach(({ placeholder, original }) => {
+                element.content = element.content.replace(placeholder, original);
+              });
+            }
+          });
+          
+          // Restore LaTeX in blanks
+          blanks = blanks.map(blank => {
+            let processedBlank = blank;
             latexPlaceholders.forEach(({ placeholder, original }) => {
               processedBlank = processedBlank.replace(placeholder, original);
             });
-          }
-          return processedBlank;
-        });
-
-        console.log('🔍 MAIN PARSER - Original blanks:', blanks);
-        console.log('🔍 MAIN PARSER - Processed blanks with LaTeX:', processedBlanks);
+            return processedBlank;
+          });
+        }
 
         console.log('🔍 MAIN PARSER - Final CLOZE question result:', {
           id: `g${num}_q${idx+1}`,
           type: 'CLOZE',
           text,
-          blanks: processedBlanks,
+          blanks: blanks,
           orderedElements: processedOrderedElements
         });
 
-        return {
+        // Create the CLOZE question object
+        let clozeQuestion = {
           id:          `g${num}_q${idx+1}`,
           type:        'CLOZE',
           text,
-          blanks:      processedBlanks, // Use processed blanks with LaTeX restored
+          blanks:      blanks,
           explanation: eT,
           images,
           codeBlocks,
@@ -631,6 +567,17 @@ function parseStandardMarkdown(md) {
           rawText: rawQ,
           rawExplanation: rawE,
         };
+
+        // CRITICAL: Ensure the question has a valid blanks array using centralized function
+        clozeQuestion = ensureClozeQuestion(clozeQuestion);
+        
+        console.log('🔍 MAIN PARSER - Final ensured CLOZE question:', {
+          id: clozeQuestion.id,
+          blanksCount: clozeQuestion.blanks?.length || 0,
+          blanks: clozeQuestion.blanks
+        });
+
+        return clozeQuestion;
       }
       else if (type === 'T-F') {
         return {

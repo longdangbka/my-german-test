@@ -59,12 +59,7 @@ const BookmarkButton = ({ question, quizName, questionIndex }) => {
           }
         } else {
           // Add bookmark - format as standard quiz question
-          console.log('🔍 BOOKMARK DEBUG - Question object:', question);
-          console.log('🔍 BOOKMARK DEBUG - question.rawText:', question.rawText);
-          console.log('🔍 BOOKMARK DEBUG - question.text:', question.text);
-          console.log('🔍 BOOKMARK DEBUG - question.rawExplanation:', question.rawExplanation);
-          console.log('🔍 BOOKMARK DEBUG - question.explanation:', question.explanation);
-          
+          // Use rawText to preserve any formatting including cloze syntax for storage
           let bookmarkEntry = `
 --- start-question
 TYPE: ${question.type || 'T-F'}

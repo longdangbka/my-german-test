@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import QuestionList from '../questions/components/QuestionList';
 import TestControls from '../testing/components/TestControls';
-import { parseClozeMarkers } from '../../shared/constants/index.js'; // Import the parsing function
+import { 
+  extractMediaLinks, 
+  processContentForAnki 
+} from '../anki/ankiConnect.js';
+// Import centralized cloze utilities for consistent processing
+import { 
+  stripMarkers, 
+  extractAllClozeBlanks,
+  toSequentialBlanks,
+  processClozeElements
+} from '../../cloze.js';
 
 const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
   const [bookmarks, setBookmarks] = useState([]);
@@ -27,9 +37,24 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           bookmarkedQuestions = parseBookmarksFile(bookmarksContent);
         }
       } else {
-        // Load from localStorage (browser fallback)
-        const storedBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
-        bookmarkedQuestions = storedBookmarks.map(b => b.question);
+        // Load from HTTP in browser environment
+        try {
+          const response = await fetch('/vault/bookmarks.md');
+          if (response.ok) {
+            const bookmarksContent = await response.text();
+            bookmarkedQuestions = parseBookmarksFile(bookmarksContent);
+          } else {
+            console.error('Failed to fetch bookmarks.md:', response.status);
+            // Fallback to localStorage
+            const storedBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+            bookmarkedQuestions = storedBookmarks.map(b => b.question);
+          }
+        } catch (fetchError) {
+          console.error('Error fetching bookmarks.md:', fetchError);
+          // Fallback to localStorage
+          const storedBookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
+          bookmarkedQuestions = storedBookmarks.map(b => b.question);
+        }
       }
 
       setBookmarks(bookmarkedQuestions);
@@ -52,6 +77,59 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
       setError('Failed to load bookmarks');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Test function for media upload functionality
+  const testMediaUpload = async () => {
+    console.log('=== Testing Media Upload Functionality ===');
+    
+    // Find a bookmark with media content
+    const testBookmark = bookmarks.find(bookmark => 
+      bookmark.rawText && bookmark.rawText.includes('![[')
+    );
+    
+    if (!testBookmark) {
+      console.log('No bookmarks with media found for testing');
+      alert('No bookmarks with media found for testing');
+      return;
+    }
+    
+    console.log('Testing with bookmark:', testBookmark.id);
+    console.log('Content:', testBookmark.rawText);
+    
+    try {
+      // Step 1: Extract media links
+      const mediaLinks = extractMediaLinks(testBookmark.rawText);
+      console.log('Found media links:', mediaLinks);
+      
+      // Step 2: Test file access
+      for (const media of mediaLinks) {
+        const fileUrl = `${window.location.origin}/vault/${media.filename}`;
+        console.log(`Testing access to: ${fileUrl}`);
+        
+        try {
+          const response = await fetch(fileUrl);
+          console.log(`  ${media.filename}: ${response.status} ${response.statusText}`);
+          if (response.ok) {
+            const blob = await response.blob();
+            console.log(`  File size: ${blob.size} bytes, type: ${blob.type}`);
+          }
+        } catch (error) {
+          console.error(`  Failed to access ${media.filename}:`, error);
+        }
+      }
+      
+      // Step 3: Test full processing
+      console.log('Testing full content processing...');
+      const processedContent = await processContentForAnki(testBookmark.rawText);
+      console.log('Processed content:');
+      console.log(processedContent);
+      
+      alert('Media upload test completed - check console for details');
+    } catch (error) {
+      console.error('Error during media upload test:', error);
+      alert('Media upload test failed - check console for details');
     }
   };
 
@@ -176,14 +254,14 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
     let html = '<table style="border-collapse: collapse; border: 1px solid black; width: 100%; text-align: left; font-size: 14px;">';
     html += '<thead style="background-color: #f2f2f2;"><tr>';
     headers.forEach(h => {
-      html += `<th style="border: 1px solid black; padding: 10px;">${h}</th>`;
+      html += `<th style="border: 1px solid black; padding: 10px;">${stripMarkers(h)}</th>`;
     });
     html += '</tr></thead><tbody>';
 
     rows.forEach(cells => {
       html += '<tr>';
       cells.forEach(c => {
-        html += `<td style="border: 1px solid black; padding: 10px;">${c}</td>`;
+        html += `<td style="border: 1px solid black; padding: 10px;">${stripMarkers(c)}</td>`;
       });
       html += '</tr>';
     });
@@ -276,6 +354,9 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           const { elements } = parseContentWithOrder(questionText, question.type === 'CLOZE');
           question.orderedElements = elements;
           
+          // Always preserve the raw text for Anki export
+          question.rawText = questionText;
+          
           // Build cleaned text (similar to main parser)
           let cleanedText = '';
           elements.forEach(element => {
@@ -287,28 +368,40 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           
           // Process cloze markers if it's a cloze question
           if (question.type === 'CLOZE') {
-            const clozeMarkers = parseClozeMarkers(questionText);
-            if (clozeMarkers.length > 0 && !question.blanks.length) {
-              question.blanks = clozeMarkers.map(marker => marker.content);
+            console.log('🔍 BOOKMARK CLOZE - Processing cloze question:', question.id);
+            console.log('🔍 BOOKMARK CLOZE - Original text:', questionText);
+            
+            // Use the SAME approach as main quiz: convert to sequential blanks first
+            const sequentialText = toSequentialBlanks(questionText);
+            console.log('🔍 BOOKMARK CLOZE - After sequential conversion:', sequentialText);
+            
+            // Extract ALL cloze blanks using the new centralized function
+            const allBlanks = extractAllClozeBlanks(questionText);
+            console.log('🔍 BOOKMARK CLOZE - Extracted blanks:', allBlanks);
+            
+            if (allBlanks.length > 0) {
+              question.blanks = allBlanks;
             }
             
-            // Replace cloze markers with blanks in text elements
-            question.orderedElements = elements.map(element => {
-              if (element.type === 'text') {
-                let processedContent = element.content;
-                const elementMarkers = parseClozeMarkers(processedContent);
-                // Replace from end to start to maintain positions
-                for (let i = elementMarkers.length - 1; i >= 0; i--) {
-                  const marker = elementMarkers[i];
-                  processedContent = processedContent.slice(0, marker.start) + '_____' + processedContent.slice(marker.end);
-                }
-                return { ...element, content: processedContent };
-              } else if (element.type === 'table') {
-                // Convert table to HTML for rendering
+            // Re-parse elements with sequential processing applied
+            const { elements: sequentialElements } = parseContentWithOrder(sequentialText, true);
+            
+            // Use processClozeElements with toSequential: true (same as main quiz)
+            question.orderedElements = processClozeElements(sequentialElements, { 
+              stripMarkers: false, 
+              toSequential: false  // Already converted above
+            }).map(element => {
+              // Convert tables to HTML for rendering (same as non-cloze questions)
+              if (element.type === 'table') {
                 return { ...element, content: mdTableToHtml(element.content) };
               }
               return element;
             });
+            
+            // Also create a processed text for backwards compatibility using sequential format
+            question.text = sequentialText;
+            
+            console.log('🔍 BOOKMARK CLOZE - Final processed elements:', question.orderedElements);
           } else {
             // For non-cloze questions, convert tables to HTML
             question.orderedElements = elements.map(element => {
@@ -347,11 +440,19 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
         if (explanationText) {
           const { elements } = parseContentWithOrder(explanationText, false);
           question.explanationOrderedElements = elements.map(element => {
-            if (element.type === 'table') {
+            if (element.type === 'text') {
+              // Use stripMarkers to clean any cloze markup in explanations
+              if (/\{\{c\d+::[^}]+\}\}/.test(element.content)) {
+                return { ...element, content: stripMarkers(element.content) };
+              }
+            } else if (element.type === 'table') {
               return { ...element, content: mdTableToHtml(element.content) };
             }
             return element;
           });
+          
+          // Preserve raw explanation text for Anki export (especially if it contains cloze markers)
+          question.rawExplanation = explanationText;
           
           // Build cleaned explanation text (similar to main parser)
           let cleanedExplanationText = '';
@@ -511,13 +612,22 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             📚 Bookmarked Questions ({bookmarks.length})
           </h2>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={testMediaUpload}
+              className="px-3 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors"
+              title="Test media upload functionality"
+            >
+              🧪 Test Media
+            </button>
+            <button
+              onClick={toggleTheme}
+              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
+              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </button>
+          </div>
         </div>
 
         {bookmarks.length === 0 ? (
@@ -537,6 +647,7 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
               onChange={e => setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
               showFeedback={showFeedback}
               quizName="bookmarks"
+              showAnkiButton={true}
             />
             <TestControls
               onCheck={checkAnswers}

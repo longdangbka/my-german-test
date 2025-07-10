@@ -44,6 +44,14 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(react-syntax-highlighter)/)"
+    ],
+    "moduleNameMapper": {
+      "\\.(css|less|scss|sass)$": "identity-obj-proxy"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -133,6 +141,7 @@
     "electron": "^37.2.0",
     "electron-builder": "^26.0.12",
     "electron-reload": "^2.0.0-alpha.1",
+    "identity-obj-proxy": "^3.0.0",
     "rimraf": "^6.0.1"
   }
 }

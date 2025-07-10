@@ -2,6 +2,7 @@ import React from 'react';
 import '../../../assets/styles/answer-contrast.css';
 import VaultImage from '../../../shared/components/VaultImage.jsx';
 import BookmarkButton from '../../bookmarks/BookmarkButton.jsx';
+import { AnkiButton } from '../../anki';
 import CodeBlock from '../components/CodeBlock';
 import TableWithLatex from '../components/TableWithLatex';
 import { renderSimpleLatex } from '../../../shared/utils/simpleLatexRenderer';
@@ -139,7 +140,7 @@ function renderOrderedElements(elements) {
   return result;
 }
 
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, showAnkiButton = false }) {
   // Extract the actual value for this question
   const questionValue = typeof value === 'object' ? (value?.[q.id] || '') : (value || '');
   const questionFeedback = typeof feedback === 'object' ? feedback?.[q.id] : feedback;
@@ -221,11 +222,16 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           </div>
         </div>
         
-        <BookmarkButton 
-          question={q} 
-          quizName={quizName} 
-          questionIndex={seq} 
-        />
+        <div className="flex items-center space-x-2">
+          <BookmarkButton 
+            question={q} 
+            quizName={quizName} 
+            questionIndex={seq} 
+          />
+          {showAnkiButton && (
+            <AnkiButton question={q} />
+          )}
+        </div>
       </div>
       
       {/* Fallback rendering for old format (images, code blocks, tables separately) */}

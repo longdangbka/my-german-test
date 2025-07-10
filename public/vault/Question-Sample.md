@@ -154,9 +154,9 @@ E: "Die Führung ist auf Deutsch und Englisch."
 TYPE: CLOZE
 
 Q: 
-{{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+{{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
-| {{c::a}}   | b   |
+| {{c1::a}}   | b   |
 | --- | --- |
 | 1   | 2   |
 

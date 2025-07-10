@@ -8,23 +8,93 @@ TYPE: T-F
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ asdasdasdasd
 ![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
 
-```jsx
-// In your component
-return (
-  <div className="upload-wrapper">
-    <label htmlFor={`upload-${group.title}`} className="btn">
-      {src ? 'Change Audio' : 'Upload Audio'}
-    </label>
-    <input
-      id={`upload-${group.title}`}
-      type="file"
-      accept="audio/*"
-      onChange={handleUpload}
-    />
-  </div>
-);
+```python
+import random
+from typing import Generic, Optional, TypeVar
+
+T = TypeVar('T')
 
 
+class LinkedList(Generic[T]):
+    class Node:
+        def __init__(self, value: T, next=None):
+            self.value = value  # The data stored in the node
+            self.next = next    # Pointer to the next node (or None)
+
+    def __init__(self):
+        """Constructor to create an empty linked list."""
+        self.head = None  # Start with an empty list
+
+    def is_empty(self) -> bool:
+        """Check if the linked list is empty."""
+        return self.head is None
+
+    def insert(self, obj: T) -> bool:
+        """
+        Insert an object of type T into the linked list in ascending order.
+        Return True if the object is inserted successfully.
+        Return False if the object is already in the list (no duplicates allowed).
+        """
+        # Create a new node for the object
+        new_node = self.Node(obj)
+
+        # Handle the empty list case
+        if self.head is None:
+            self.head = new_node
+            return True
+
+        # Special case: Insert at the beginning if obj is smaller than the head
+        if obj < self.head.value:
+            new_node.next = self.head
+            self.head = new_node
+            return True
+
+        # Traverse the list to find the correct position
+        current = self.head
+        while current.next is not None and current.next.value < obj:
+            current = current.next
+
+        # Check for duplication
+        if current.next is not None and current.next.value == obj:
+            return False  # Duplicate found, do not insert
+
+        # Insert the new node at the correct position
+        new_node.next = current.next
+        current.next = new_node
+        return True
+
+    def __str__(self):
+        """String representation of the linked list."""
+        values = []
+        current = self.head
+        while current is not None:
+            values.append(str(current.value))
+            current = current.next
+        return " -> ".join(values)
+
+
+# Testing with random integers
+def test_with_random_integers():
+    # Create a linked list for integers
+    ll = LinkedList[int]()
+
+    # Generate random integers
+    random_numbers = [random.randint(1, 20) for _ in range(15)]
+    print(f"Random Numbers: {random_numbers}")
+
+    # Insert random numbers into the linked list
+    for num in random_numbers:
+        result = ll.insert(num)
+        print(f"Inserting {num}: {
+              'Success' if result else 'Failed (Duplicate)'}")
+
+    # Print the final linked list
+    print("\nFinal Linked List:")
+    print(ll)
+
+
+# Run the test
+test_with_random_integers()
 ```
 
 | a   | b   |
@@ -35,6 +105,7 @@ A: R
 E: "Sie können aber auch bei unserer Kollegin, Frau Dr. Elke Riedel, einen Termin vereinbaren."
 
 $x=5$
+
 ```css
 .App {
   text-align: center;
@@ -122,13 +193,12 @@ E: "Die Führung ist auf Deutsch und Englisch."
 --- end-question
 
 
-
 --- start-question
 TYPE: Cloze
 
-Q: {{c::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
-| {{c::a}}   | b   |
+| {{c1::a}}   | b   |
 | --- | --- |
 | 1   | 2   |
 
@@ -153,36 +223,5 @@ amous equation $E = mc^2$ that relates energy and mass?
 
 
 A: Einstein
-
---- end-question
-rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-```
-
---- end-question
-
---- start-question
-TYPE: Cloze
-
-Q: _____ asfsdfasdfasdfasdfasdf.
-
-| _____   | b   |
-| --- | --- |
-| 1   | 2   |
-
-
-
-$x=5$
-
-$$y=5_{1}$$
-
-
-
-E: ausmachen = to turn off
-turn off = ausmachen
 
 --- end-question

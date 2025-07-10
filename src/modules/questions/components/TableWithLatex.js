@@ -114,14 +114,24 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
     tempDiv.innerHTML = text;
     const decodedText = tempDiv.textContent || tempDiv.innerText || text;
     
-    // Check if this cell contains cloze markers or blank placeholders
+    // Check if this cell contains cloze markers or blank placeholders (including __CLOZE_N__)
+    const hasIdAwareBlanks = /__CLOZE_\d+__/.test(decodedText);
     const hasClozeMarkers = /==([^=]+)==/.test(decodedText) || 
                            /\{\{c::([^}]+)\}\}/.test(decodedText) || 
                            /\{\{([^}]+)\}\}/.test(decodedText) ||
                            /_____/.test(decodedText);
     
+    console.log('🚨 TableCell - Checking content:', { 
+      decodedText, 
+      hasIdAwareBlanks, 
+      hasClozeMarkers, 
+      questionId: question?.id,
+      hasOnChange: !!onChange 
+    });
+    
     // If we have cloze functionality and this cell has markers, render interactive inputs
-    if (hasClozeMarkers && question && onChange && question.blanks) {
+    if ((hasIdAwareBlanks || hasClozeMarkers) && question && onChange) {
+      console.log('🚨 TableCell - Rendering interactive cloze for:', decodedText);
       return renderCellWithClozeInputs(decodedText, question, value, onChange, showFeedback, feedback);
     }
     
@@ -131,22 +141,29 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
 
   // Function to render a cell with interactive cloze input fields
   const renderCellWithClozeInputs = (text, question, value, onChange, showFeedback, feedback) => {
-    const parts = [];
-    let remaining = text;
+    console.log('🚨 TableCell renderCellWithClozeInputs:', { text, questionId: question?.id, questionBlanks: question?.blanks });
+    
+    // Check for __CLOZE_N__ placeholders first
+    if (/__CLOZE_\d+__/.test(text)) {
+      return renderCellWithIdAwareBlanks(text, question, value, onChange, showFeedback, feedback);
+    }
     
     // First check for blank placeholders (_____) which are created from cloze markers
-    if (/_____/.test(remaining)) {
-      return renderCellWithBlankPlaceholders(remaining, question, value, onChange, showFeedback, feedback);
+    if (/_____/.test(text)) {
+      return renderCellWithBlankPlaceholders(text, question, value, onChange, showFeedback, feedback);
     }
     
     // Use the new cloze parser to find markers that can contain LaTeX
-    const clozeMarkers = parseClozeMarkers(remaining);
+    const clozeMarkers = parseClozeMarkers(text);
     
     if (clozeMarkers.length === 0) {
       // No cloze markers, just render with LaTeX
-      return renderWithLatex(remaining);
+      return renderWithLatex(text);
     }
     
+    // Initialize variables for processing
+    const parts = [];
+    let remaining = text;
     let currentPos = 0;
     
     for (let i = 0; i < clozeMarkers.length; i++) {
@@ -252,6 +269,132 @@ function TableCell({ content, question = null, value = {}, onChange = null, show
         }
       }
     }
+    
+    return parts.length > 0 ? parts : renderWithLatex(remaining);
+  };
+
+  // Function to render cells with __CLOZE_N__ placeholders
+  const renderCellWithIdAwareBlanks = (text, question, value, onChange, showFeedback, feedback) => {
+    console.log('🚨 TableCell renderCellWithIdAwareBlanks:', { text, questionId: question?.id });
+    
+    const parts = [];
+    let remaining = text;
+    
+    // Split by __CLOZE_N__ placeholders
+    const clozeRegex = /__CLOZE_(\d+)__/g;
+    let match;
+    let lastIndex = 0;
+    
+    while ((match = clozeRegex.exec(remaining)) !== null) {
+      const [fullMatch, clozeNum] = match;
+      const start = match.index;
+      const end = start + fullMatch.length;
+      
+      // Add text before this placeholder
+      if (start > lastIndex) {
+        const textBefore = remaining.slice(lastIndex, start);
+        if (textBefore) {
+          const renderedText = renderWithLatex(textBefore);
+          if (Array.isArray(renderedText)) {
+            parts.push(...renderedText);
+          } else {
+            parts.push(renderedText);
+          }
+        }
+      }
+      
+      // Convert cloze number to zero-based index
+      const blankIndex = parseInt(clozeNum) - 1;
+      
+      // Create input field for this cloze
+      if (question.blanks && blankIndex >= 0 && blankIndex < question.blanks.length) {
+        const fieldName = `${question.id}_${clozeNum}`;
+        const inputValue = value[fieldName] || '';
+        const feedbackKey = fieldName;
+        const isCorrect = showFeedback && feedback[feedbackKey] === 'correct';
+        const expectedAnswer = question.blanks[blankIndex];
+        
+        console.log('🚨 TableCell creating input for:', { 
+          clozeNum, 
+          blankIndex, 
+          fieldName, 
+          inputValue, 
+          expectedAnswer 
+        });
+        
+        parts.push(
+          <span key={`cloze-${clozeNum}-${blankIndex}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+            {showFeedback ? (
+              // When showing feedback, display user input (if any) and expected answer
+              <>
+                {/* Show what the user typed (if anything) with colored background */}
+                {inputValue ? (
+                  <>
+                    <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
+                      isCorrect
+                        ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
+                        : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
+                    }`}>
+                      {inputValue}
+                    </span>
+                    {/* Show correct/incorrect symbol */}
+                    <span className={isCorrect ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>
+                      {isCorrect ? '✅' : '❌'}
+                    </span>
+                  </>
+                ) : (
+                  // If user left blank, show a placeholder and a cross
+                  <>
+                    <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
+                      (blank)
+                    </span>
+                    <span className="text-red-500 dark:text-red-400">❌</span>
+                  </>
+                )}
+                {/* Show expected answer in gray background */}
+                <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
+                  {expectedAnswer}
+                </span>
+              </>
+            ) : (
+              <input
+                name={fieldName}
+                type="text"
+                value={inputValue}
+                onChange={onChange}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+                className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                data-blank-index={blankIndex}
+                data-cloze-num={clozeNum}
+              />
+            )}
+          </span>
+        );
+      } else {
+        // If no matching blank found, just show the placeholder as text  
+        console.log('🚨 TableCell no matching blank for:', { clozeNum, blankIndex, questionBlanks: question?.blanks });
+        parts.push(<span key={`cloze-missing-${clozeNum}`} className="text-gray-500">{fullMatch}</span>);
+      }
+      
+      lastIndex = end;
+    }
+    
+    // Add remaining text after the last placeholder
+    if (lastIndex < remaining.length) {
+      const textAfter = remaining.slice(lastIndex);
+      if (textAfter) {
+        const renderedText = renderWithLatex(textAfter);
+        if (Array.isArray(renderedText)) {
+          parts.push(...renderedText);
+        } else {
+          parts.push(renderedText);
+        }
+      }
+    }
+    
+    console.log('🚨 TableCell renderCellWithIdAwareBlanks result:', { parts: parts.length, remaining });
     
     return parts.length > 0 ? parts : renderWithLatex(remaining);
   };

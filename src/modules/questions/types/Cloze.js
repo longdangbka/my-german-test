@@ -2,9 +2,43 @@ import React from 'react';
 import '../../../assets/styles/answer-contrast.css';
 import VaultImage from '../../../shared/components/VaultImage.jsx';
 import BookmarkButton from '../../bookmarks/BookmarkButton.jsx';
+import { AnkiButton } from '../../anki';
 import CodeBlock from '../components/CodeBlock';
 import TableWithLatex from '../components/TableWithLatex';
 import { renderSimpleLatex } from '../../../shared/utils/simpleLatexRenderer';
+
+// Import centralized cloze utilities
+import { 
+  stripMarkers as stripCloze, 
+  findCloze, 
+  getClozeIds, 
+  replaceWithBlanks as toBlanks 
+} from '../../../cloze.js';
+
+// Import focused cloze rendering components
+import {
+  InlineClozeText,
+  GenericRenderer,
+  CleanTextRenderer,
+  ClozeDebugInfo
+} from '../components/ClozeRenderers.jsx';
+
+// Legacy export for backward compatibility - now uses centralized utility
+export { stripCloze };
+
+// Helper: extract cloze numbers from content using centralized utility
+const getClozeNums = (content) => {
+  if (!content) return new Set();
+  
+  const ids = getClozeIds(content);
+  const clozeNums = new Set(ids);
+  
+  if (clozeNums.size > 0) {
+    console.log(`🔍 CLOZE NUMBER - Found cloze numbers ${Array.from(clozeNums)} in content`);
+  }
+  
+  return clozeNums;
+};
 
 export function initAnswers(q) {
   const out = {};
@@ -20,7 +54,7 @@ export function initFeedback(q) {
   });
   return out;
 }
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, showAnkiButton = false }) {
   // Debugging info for developer troubleshooting
   console.log('🔍 CLOZE RENDERER - Rendering CLOZE question:', q.id);
   console.log('🔍 CLOZE RENDERER - Blanks found:', q.blanks?.length || 0);
@@ -28,22 +62,11 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
   // Add visual debugging for development
   const isDebug = window.location.search.includes('debug');
   
-  // In debug mode, show detailed information
+  // In debug mode, show detailed information using focused component
   if (isDebug) {
     return (
       <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
-        <div className="debug-info bg-yellow-100 p-4 mb-4 text-sm border-l-4 border-yellow-500">
-          <h4 className="font-bold text-lg mb-2">🔍 DEBUG INFO - CLOZE Question</h4>
-          <div className="space-y-2">
-            <div><strong>ID:</strong> {q.id}</div>
-            <div><strong>Type:</strong> {q.type}</div>
-            <div><strong>Has Blanks:</strong> {q.blanks ? `Yes (${q.blanks.length})` : 'No'}</div>
-            <div><strong>Blanks:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{JSON.stringify(q.blanks, null, 2)}</pre></div>
-            <div><strong>Elements Count:</strong> {q.orderedElements?.length || 0}</div>
-            <div><strong>First Element:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{JSON.stringify(q.orderedElements?.[0], null, 2)}</pre></div>
-            <div><strong>Text Property:</strong> <pre className="bg-gray-100 p-2 mt-1 text-xs">{q.text}</pre></div>
-          </div>
-        </div>
+        <ClozeDebugInfo question={q} isDebug={true} />
         
         {/* Show the actual rendered content */}
         <div className="border-t pt-4">
@@ -56,13 +79,108 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           ) : (
             <div>
               <p className="text-green-600 mb-2">✅ Has blanks - rendering with inputs</p>
-              {renderOrderedElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
+              {renderElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
             </div>
           )}
         </div>
       </div>
     );
   }
+  
+  // Safety check: ensure question data doesn't contain Anki format {{cN::content}}
+  // This should only happen if there's a bug in the question processing pipeline
+  const cleanQuestionData = (question) => {
+    const cleanedQuestion = { ...question };
+    
+    // Get all cloze numbers in the question content using centralized utility
+    // Check both question.text and question.rawText (for bookmarked questions)
+    const textToCheck = question.rawText || question.text;
+    const clozeNums = getClozeNums(textToCheck);
+    console.log('🔍 CLOZE PROCESSING - Checking text:', textToCheck?.substring(0, 100) + '...');
+    console.log('🔍 CLOZE PROCESSING - Found cloze numbers:', Array.from(clozeNums));
+    
+    // Process text with centralized utilities - convert cloze markers to blanks for display
+    if (cleanedQuestion.text && findCloze(cleanedQuestion.text).length > 0) {
+      console.warn('🚨 FRONTEND CLOZE WARNING - Found Anki format in question.text:', cleanedQuestion.text);
+      cleanedQuestion.text = toBlanks(cleanedQuestion.text); // Replace all cloze with blanks
+      console.warn('🚨 FRONTEND CLOZE WARNING - Cleaned question.text:', cleanedQuestion.text);
+    }
+    
+    // Check and clean orderedElements using centralized utilities
+    if (cleanedQuestion.orderedElements) {
+      cleanedQuestion.orderedElements = cleanedQuestion.orderedElements.map(element => {
+        if (element.type === 'text' && element.content) {
+          // Add any cloze numbers from elements to the set (check original content in rawText)
+          if (question.rawText) {
+            const elementClozeNums = getClozeNums(question.rawText);
+            elementClozeNums.forEach(num => clozeNums.add(num));
+          }
+          
+          // Also check the element content itself for any remaining cloze markers
+          const elementClozes = findCloze(element.content);
+          if (elementClozes.length > 0) {
+            const elementClozeNums = getClozeIds(element.content);
+            elementClozeNums.forEach(num => clozeNums.add(num));
+            
+            console.log('🔍 CLOZE EXTRACTION - Found cloze in element:', element.content);
+            console.log('🔍 CLOZE EXTRACTION - Extracted cloze numbers:', elementClozeNums);
+          }
+          
+          const originalContent = element.content;
+          // Use centralized utility to convert cloze markers to blanks
+          const cleanedContent = toBlanks(originalContent);
+          
+          if (originalContent !== cleanedContent) {
+            console.warn('🚨 FRONTEND CLOZE WARNING - Content was modified:', { original: originalContent, cleaned: cleanedContent });
+          }
+          
+          return { ...element, content: cleanedContent };
+        }
+        return element;
+      });
+    }
+    
+    // Process explanation elements using centralized utilities
+    if (cleanedQuestion.explanationOrderedElements) {
+      cleanedQuestion.explanationOrderedElements = cleanedQuestion.explanationOrderedElements.map(element => {
+        if (element.type === 'text' && element.content) {
+          // For explanations, use stripCloze to show the inner content
+          const originalContent = element.content;
+          const cleanedContent = stripCloze(originalContent);
+          
+          if (originalContent !== cleanedContent) {
+            console.warn('🚨 EXPLANATION CLOZE WARNING - Stripped cloze from explanation:', {
+              original: originalContent,
+              cleaned: cleanedContent
+            });
+          }
+          
+          return { ...element, content: cleanedContent };
+        }
+        return element;
+      });
+    }
+    
+    // Process feedback text and other text fields using centralized utilities
+    if (cleanedQuestion.feedback) {
+      Object.keys(cleanedQuestion.feedback).forEach(key => {
+        if (typeof cleanedQuestion.feedback[key] === 'string' && 
+            findCloze(cleanedQuestion.feedback[key]).length > 0) {
+          cleanedQuestion.feedback[key] = stripCloze(cleanedQuestion.feedback[key]);
+        }
+      });
+    }
+    
+    // If we found cloze numbers, ensure blanks array is updated and log information
+    if (clozeNums.size > 0 && Array.isArray(cleanedQuestion.blanks)) {
+      console.log('🔍 CLOZE STRUCTURE - Blanks array:', cleanedQuestion.blanks);
+      console.log('🔍 CLOZE STRUCTURE - Cloze numbers found:', Array.from(clozeNums).sort());
+    }
+    
+    return cleanedQuestion;
+  };
+  
+  const cleanedQ = cleanQuestionData(q);
   
   // Use the new ordered elements approach for questions without blanks
   if (!q.blanks || q.blanks.length === 0) {
@@ -78,11 +196,16 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
               </div>
             )}
           </div>
-          <BookmarkButton 
-            question={q} 
-            quizName={quizName} 
-            questionIndex={seq} 
-          />
+          <div className="flex items-center space-x-2">
+            <BookmarkButton 
+              question={q} 
+              quizName={quizName} 
+              questionIndex={seq} 
+            />
+            {showAnkiButton && (
+              <AnkiButton question={q} />
+            )}
+          </div>
         </div>
       </div>
     );
@@ -90,156 +213,101 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
   
 
   
-  // For cloze questions with blanks, render all content in order
+  // For cloze questions with blanks, render all content in order using focused components
   return (
     <div className="question-block p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-600 transition-all duration-200">
-      {isDebug && (
-        <div className="debug-info bg-yellow-100 p-2 mb-4 text-xs">
-          <strong>DEBUG - CLOZE with blanks:</strong><br/>
-          Type: {q.type}<br/>
-          Blanks: {JSON.stringify(q.blanks)}<br/>
-          Elements: {q.orderedElements?.length || 0}<br/>
-          First element: {JSON.stringify(q.orderedElements?.[0])}
-        </div>
-      )}
       <div className="flex items-start justify-between">
         <div className="flex-1 text-gray-900 dark:text-gray-100">
-          {/* Render all content elements in original order */}
-          {renderOrderedElementsWithCloze(q.orderedElements || [], q, value, onChange, showFeedback, feedback)}
+          {/* Render all content elements using the new simplified function */}
+          {renderElementsWithCloze(cleanedQ.orderedElements || [], cleanedQ, value, onChange, showFeedback, feedback)}
         </div>
-        <BookmarkButton 
-          question={q} 
-          quizName={quizName} 
-          questionIndex={seq} 
-        />
+        <div className="flex items-center space-x-2">
+          <BookmarkButton 
+            question={cleanedQ} 
+            quizName={quizName} 
+            questionIndex={seq} 
+          />
+          {showAnkiButton && (
+            <AnkiButton question={q} />
+          )}
+        </div>
       </div>
       
-      {showFeedback && q.explanation && (
+      {showFeedback && cleanedQ.explanation && (
         <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800 text-sm">
           <strong className="text-blue-800 dark:text-blue-200">💡 Erklärung:</strong>
-          {renderOrderedElements(q.explanationOrderedElements || [])}
+          <div className="mt-2">
+            {cleanedQ.explanationOrderedElements ? (
+              renderOrderedElements(cleanedQ.explanationOrderedElements)
+            ) : (
+              <CleanTextRenderer text={cleanedQ.explanation} />
+            )}
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-// Function to render elements in their original order, with special handling for cloze text
-function renderOrderedElementsWithCloze(elements, question, value, onChange, showFeedback, feedback) {
+// Simplified function to render elements with cloze handling using focused components
+function renderElementsWithCloze(elements, question, value, onChange, showFeedback, feedback) {
   if (!elements || elements.length === 0) return null;
   
   const result = [];
   let currentInlineGroup = [];
-  let globalBlankIndex = 0; // Track current blank index across all text elements
+  let globalBlankIndex = 0;
   
   // Helper function to flush the current inline group with cloze handling
   const flushInlineGroup = () => {
-    if (currentInlineGroup.length > 0) {
-      // Combine all text content in the group and render as one unit with cloze handling
-      const combinedTextParts = [];
-      let currentBlankIndex = globalBlankIndex;
+    if (currentInlineGroup.length === 0) return;
+    
+    // Combine all text content in the group
+    const combinedTextParts = [];
+    
+    currentInlineGroup.forEach((el, index) => {
+      const content = el.type === 'text' ? el.content || '' : '';
       
-      currentInlineGroup.forEach((el, index) => {
-        const content = el.type === 'text' ? el.content || '' : '';
+      // Add space before element if needed (same logic as other question types)
+      let processedContent = content;
+      if (index > 0 && content.trim()) {
+        const prevElement = currentInlineGroup[index - 1];
+        const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
         
-        // Add space before element if needed (same logic as other question types)
-        let processedContent = content;
-        if (index > 0 && content.trim()) {
-          const prevElement = currentInlineGroup[index - 1];
-          const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
-          
-          if (prevContent.trim() && 
-              !prevContent.match(/\s$/) && 
-              !content.match(/^[\s.,;:!?]/) &&
-              !prevContent.match(/[-=]$/) &&
-              !content.match(/^[-=]/)) {
-            processedContent = ' ' + content;
-          }
+        if (prevContent.trim() && 
+            !prevContent.match(/\s$/) && 
+            !content.match(/^[\s.,;:!?]/) &&
+            !prevContent.match(/[-=]$/) &&
+            !content.match(/^[-=]/)) {
+          processedContent = ' ' + content;
         }
-        
-        combinedTextParts.push(processedContent);
-      });
-      
-      const combinedText = combinedTextParts.join('');
-      
-      if (combinedText.trim()) {
-        // Handle text with cloze markers
-        const parts = combinedText.split('_____');
-        
-        result.push(
-          <div
-            key={`inline-group-${result.length}`}
-            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
-            className="my-2 text-content"
-          >
-            {parts.map((seg, i) => (
-              <React.Fragment key={`group-${result.length}-part-${i}`}>
-                {renderSimpleLatex(seg)}
-                {i < parts.length - 1 && currentBlankIndex < question.blanks.length && (
-                  <>
-                    {showFeedback ? (
-                      // When showing feedback, display user input (if any) and expected answer
-                      <span className="inline-flex items-center gap-2 mx-2">
-                        {/* Show what the user typed (if anything) with colored background */}
-                        {value && value[`${question.id}_${currentBlankIndex + 1}`] ? (
-                          <>
-                            <span className={`inline-block px-3 py-1 border rounded text-sm font-medium ${
-                              feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
-                                ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
-                                : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
-                            }`}>
-                              {renderSimpleLatex(value[`${question.id}_${currentBlankIndex + 1}`])}
-                            </span>
-                            {/* Show correct/incorrect symbol */}
-                            <span className={
-                              feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct'
-                                ? 'text-green-500 dark:text-green-400'
-                                : 'text-red-500 dark:text-red-400'
-                            }>
-                              {feedback && feedback[`${question.id}_${currentBlankIndex + 1}`] === 'correct' ? '✅' : '❌'}
-                            </span>
-                          </>
-                        ) : (
-                          // If user left blank, show a placeholder and a cross
-                          <>
-                            <span className="inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400">
-                              (blank)
-                            </span>
-                            <span className="text-red-500 dark:text-red-400">❌</span>
-                          </>
-                        )}
-                        {/* Show expected answer in gray background */}
-                        <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
-                          {renderSimpleLatex(question.blanks && question.blanks[currentBlankIndex] ? question.blanks[currentBlankIndex] : '')}
-                        </span>
-                      </span>
-                    ) : (
-                      // When not showing feedback, display the input field
-                      <input
-                        key={`${question.id}_${currentBlankIndex}_group_${i}`}
-                        name={`${question.id}_${currentBlankIndex + 1}`}
-                        value={(value && value[`${question.id}_${currentBlankIndex + 1}`]) || ''}
-                        onChange={onChange}
-                        autoComplete="off"
-                        autoCorrect="off"
-                        spellCheck="false"
-                        className="answer-input border rounded-lg px-2 py-1 mx-2 w-24 text-center inline-block focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                        data-blank-index={currentBlankIndex}
-                      />
-                    )}
-                    {(() => { currentBlankIndex++; return null; })()}
-                  </>
-                )}
-              </React.Fragment>
-            ))}
-          </div>
-        );
-        
-        // Update global blank index
-        globalBlankIndex = currentBlankIndex;
       }
-      currentInlineGroup = [];
+      
+      combinedTextParts.push(processedContent);
+    });
+    
+    const combinedText = combinedTextParts.join('');
+    
+    if (combinedText.trim()) {
+      result.push(
+        <GenericRenderer key={`inline-group-${result.length}`} element={{ type: 'text' }}>
+          <InlineClozeText
+            text={combinedText}
+            question={question}
+            value={value}
+            onChange={onChange}
+            showFeedback={showFeedback}
+            feedback={feedback}
+            startBlankIndex={globalBlankIndex}
+          />
+        </GenericRenderer>
+      );
+      
+      // Update global blank index based on cloze markers found
+      const clozeCount = findCloze(combinedText).length;
+      globalBlankIndex += clozeCount;
     }
+    
+    currentInlineGroup = [];
   };
   
   elements.forEach((element, index) => {
@@ -261,9 +329,9 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
             // Display math breaks the inline group
             flushInlineGroup();
             result.push(
-              <div key={`element-${index}`} className="my-2">
+              <GenericRenderer key={`element-${index}`} element={element}>
                 {renderSimpleLatex(`$$${element.content?.latex || ''}$$`)}
-              </div>
+              </GenericRenderer>
             );
           }
           break;
@@ -271,32 +339,32 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
         case 'image':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <VaultImage
                 src={element.content || ''}
                 alt="content visual"
                 style={{ maxWidth: '100%', margin: '8px 0' }}
               />
-            </div>
+            </GenericRenderer>
           );
           break;
         
         case 'codeBlock':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <CodeBlock 
                 code={element.content?.code || ''} 
                 lang={element.content?.lang || ''} 
               />
-            </div>
+            </GenericRenderer>
           );
           break;
         
         case 'table':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <TableWithLatex 
                 htmlTable={element.content || ''} 
                 question={question}
@@ -305,22 +373,21 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
                 showFeedback={showFeedback}
                 feedback={feedback}
               />
-            </div>
+            </GenericRenderer>
           );
           break;
         
         case 'latexPlaceholder':
           // For cloze questions, latexPlaceholders should have been converted to latex elements
-          // If we still see them here, it indicates a parsing issue
-          console.warn('Found unprocessed latexPlaceholder in renderOrderedElementsWithCloze:', element.content);
+          console.warn('Found unprocessed latexPlaceholder in cloze renderer:', element.content);
           break;
         
         default:
-          console.warn('Unknown element type:', element.type);
+          console.warn('Unknown element type in cloze renderer:', element.type);
           break;
       }
     } catch (error) {
-      console.error('Error rendering element:', element, error);
+      console.error('Error rendering element in cloze:', element, error);
     }
   });
   
@@ -330,55 +397,69 @@ function renderOrderedElementsWithCloze(elements, question, value, onChange, sho
   return result;
 }
 
-// Function to render elements in their original order
 // Function to render elements in their original order with proper inline grouping
+// Simplified function to render elements without cloze interaction (read-only) 
 function renderOrderedElements(elements) {
   if (!elements || elements.length === 0) return null;
+  
+  // Safety check: clean any Anki format from elements using centralized utilities
+  elements = elements.map(element => {
+    if (element.type === 'text' && element.content) {
+      // Check for Anki cloze format and extract inner content using stripCloze
+      const foundClozes = findCloze(element.content);
+      if (foundClozes.length > 0) {
+        console.log('� CLOZE RENDERING - Found Anki format in element:', element.content);
+        
+        // Extract and show the inner content from cloze markers
+        const cleanedContent = stripCloze(element.content);
+        console.log('� CLOZE RENDERING - Converted to plain text:', cleanedContent);
+        return { ...element, content: cleanedContent };
+      }
+    }
+    return element;
+  });
   
   const result = [];
   let currentInlineGroup = [];
   
   // Helper function to flush the current inline group
   const flushInlineGroup = () => {
-    if (currentInlineGroup.length > 0) {
-      // Combine all text content in the group and render as one unit
-      // Preserve spacing between elements by checking if they need separators
-      const combinedText = currentInlineGroup
-        .map((el, index) => {
-          const content = el.type === 'text' ? el.content || '' : '';
-          // Add space before element if:
-          // 1. It's not the first element
-          // 2. The previous element doesn't end with whitespace
-          // 3. This element doesn't start with whitespace or punctuation
-          if (index > 0 && content.trim()) {
-            const prevElement = currentInlineGroup[index - 1];
-            const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
-            
-            if (prevContent.trim() && 
-                !prevContent.match(/\s$/) && 
-                !content.match(/^[\s.,;:!?]/) &&
-                !prevContent.match(/[-=]$/) &&
-                !content.match(/^[-=]/)) {
-              return ' ' + content;
-            }
-          }
-          return content;
-        })
-        .join('');
+    if (currentInlineGroup.length === 0) return;
+    
+    const combinedTextParts = [];
+    
+    currentInlineGroup.forEach((el, index) => {
+      const content = el.type === 'text' ? el.content || '' : '';
       
-      if (combinedText.trim()) {
-        result.push(
-          <div
-            key={`inline-group-${result.length}`}
-            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}
-            className="my-2 text-content"
-          >
-            {renderSimpleLatex(combinedText)}
-          </div>
-        );
+      // Add space before element if needed
+      let processedContent = content;
+      if (index > 0 && content.trim()) {
+        const prevElement = currentInlineGroup[index - 1];
+        const prevContent = prevElement.type === 'text' ? prevElement.content || '' : '';
+        
+        if (prevContent.trim() && 
+            !prevContent.match(/\s$/) && 
+            !content.match(/^[\s.,;:!?]/) &&
+            !prevContent.match(/[-=]$/) &&
+            !content.match(/^[-=]/)) {
+          processedContent = ' ' + content;
+        }
       }
-      currentInlineGroup = [];
+      
+      combinedTextParts.push(processedContent);
+    });
+    
+    const combinedText = combinedTextParts.join('');
+    
+    if (combinedText.trim()) {
+      result.push(
+        <GenericRenderer key={`inline-group-${result.length}`} element={{ type: 'text' }}>
+          <CleanTextRenderer text={combinedText} />
+        </GenericRenderer>
+      );
     }
+    
+    currentInlineGroup = [];
   };
   
   elements.forEach((element, index) => {
@@ -391,18 +472,16 @@ function renderOrderedElements(elements) {
         
         case 'latex':
           if (element.content?.latexType === 'inline') {
-            // Treat inline LaTeX as part of the text flow
             currentInlineGroup.push({
               type: 'text',
               content: `$${element.content?.latex || ''}$`
             });
           } else {
-            // Display math breaks the inline group
             flushInlineGroup();
             result.push(
-              <div key={`element-${index}`} className="my-2">
+              <GenericRenderer key={`element-${index}`} element={element}>
                 {renderSimpleLatex(`$$${element.content?.latex || ''}$$`)}
-              </div>
+              </GenericRenderer>
             );
           }
           break;
@@ -410,34 +489,34 @@ function renderOrderedElements(elements) {
         case 'image':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <VaultImage
                 src={element.content || ''}
                 alt="content visual"
                 style={{ maxWidth: '100%', margin: '8px 0' }}
               />
-            </div>
+            </GenericRenderer>
           );
           break;
         
         case 'codeBlock':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <CodeBlock 
                 code={element.content?.code || ''} 
                 lang={element.content?.lang || ''} 
               />
-            </div>
+            </GenericRenderer>
           );
           break;
         
         case 'table':
           flushInlineGroup();
           result.push(
-            <div key={`element-${index}`} className="my-2">
+            <GenericRenderer key={`element-${index}`} element={element}>
               <TableWithLatex htmlTable={element.content || ''} />
-            </div>
+            </GenericRenderer>
           );
           break;
         
