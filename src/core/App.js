@@ -9,12 +9,38 @@ import BookmarksViewer from '../modules/bookmarks/BookmarksViewer';
 import { renderSimpleLatex } from '../shared/utils/simpleLatexRenderer';
 import '../assets/styles/inline-latex.css';
 
+// Import app initializer to ensure questions have IDs
+import { appInitializer } from '../shared/services/appInitializer.js';
+
 function App() {
   const [selectedTest, setSelectedTest] = useState(null);
   const [theme, setTheme] = useState('light');
+  const [appInitialized, setAppInitialized] = useState(false);
   
   // Use an object to store showFeedback per section
   const [showFeedback, setShowFeedback] = useState({});
+
+  // Initialize app and ensure all questions have IDs
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log('🚀 APP - Starting app initialization');
+        const success = await appInitializer.initialize();
+        setAppInitialized(success);
+        if (success) {
+          console.log('🚀 APP - App successfully initialized');
+        } else {
+          console.warn('🚀 APP - App initialization completed with warnings');
+        }
+      } catch (error) {
+        console.error('🚀 APP - App initialization failed:', error);
+        // Still allow the app to function even if initialization fails
+        setAppInitialized(true);
+      }
+    };
+
+    initializeApp();
+  }, []);
 
   useEffect(() => {
     if (theme === 'dark') {

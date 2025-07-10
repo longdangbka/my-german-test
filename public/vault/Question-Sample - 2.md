@@ -4,6 +4,7 @@
 
 --- start-question
 TYPE: T-F
+ID: qXXYY $x=5+1$ asdasasd_1_t-f_61nf2k
 
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ asdasdasdasd
 ![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
@@ -176,6 +177,7 @@ Machen Sie bitte während der Führung Handys und Smartphones aus oder stellen S
 
 --- start-question
 TYPE: T-F
+ID: qSECOND SECTION 2 TEST_1_t-f_ig9n0l
 
 Q: 
 
@@ -195,6 +197,7 @@ E: "Die Führung ist auf Deutsch und Englisch."
 
 --- start-question
 TYPE: Cloze
+ID: qSECOND SECTION 2 TEST_2_cloze_lfhxm3
 
 Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
@@ -206,7 +209,7 @@ Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
 $x=5$
 
-$$y=5_{1}$$
+$y=5_{1}$
 
 
 
@@ -217,11 +220,5 @@ E:
 
 ausmachen = to turn off
 turn off = ausmachen
-
---- end-question
-amous equation $E = mc^2$ that relates energy and mass?
-
-
-A: Einstein
 
 --- end-question

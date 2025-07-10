@@ -15,8 +15,23 @@ import {
   toSequentialBlanks
 } from '../../cloze.js';
 
+// Import question ID management utilities
+import { 
+  generateQuestionId, 
+  extractQuestionId, 
+  isValidQuestionId 
+} from '../../shared/utils/questionIdManager.js';
+
+// Import auto-ID assignment service and app initializer
+import { autoIdAssigner } from '../../shared/services/autoIdAssigner.js';
+import { appInitializer } from '../../shared/services/appInitializer.js';
+
 export async function loadQuestionGroups(signal, filename = 'Question-Sample.md') {
   console.log('🔍 loadQuestionGroups - Starting with filename:', filename);
+  
+  // Ensure app is initialized (this includes auto-ID assignment)
+  await appInitializer.initialize();
+  
   const groups = [];
 
   try {
@@ -32,6 +47,21 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
         throw new Error(`Failed to load ${filename} via IPC`);
       }
       console.log(`[Electron] Successfully loaded ${filename} (${text.length} characters)`);
+      
+      // AUTO-ID ASSIGNMENT: Process the file to ensure all questions have IDs
+      console.log('🆔 AUTO-ID - Checking for missing question IDs...');
+      try {
+        const idResult = await appInitializer.processUpdatedContent(filename, text);
+        if (idResult.updated) {
+          text = idResult.content; // Use the updated content for parsing
+          console.log(`🆔 AUTO-ID - Successfully processed ${filename} with ${idResult.addedIds.length} new IDs:`, idResult.addedIds);
+        } else {
+          console.log(`🆔 AUTO-ID - All questions in ${filename} already have IDs`);
+        }
+      } catch (idError) {
+        console.error(`🆔 AUTO-ID - Error during ID assignment for ${filename}:`, idError);
+        // Continue with original content if ID assignment fails
+      }
     } else {
       // Web environment - use fetch
       let vaultPath = '/vault/';
@@ -56,6 +86,19 @@ export async function loadQuestionGroups(signal, filename = 'Question-Sample.md'
       }
       text = await res.text();
       console.log(`[Web] Successfully loaded ${filename} (${text.length} characters)`);
+      
+      // In web environment, we'll process content but can't save back to files
+      console.log('🆔 AUTO-ID - Checking for missing question IDs in web environment...');
+      try {
+        const idResult = await autoIdAssigner.processMarkdownFile(filename, text);
+        if (idResult.updated) {
+          text = idResult.content; // Use the updated content for parsing (in memory only)
+          console.log(`🆔 AUTO-ID - Processed ${filename} in memory with ${idResult.addedIds.length} new IDs:`, idResult.addedIds);
+          console.warn('🆔 AUTO-ID - Web environment: Changes cannot be saved to disk. Please download updated content.');
+        }
+      } catch (idError) {
+        console.error(`🆔 AUTO-ID - Error during ID assignment for ${filename}:`, idError);
+      }
     }
     
     const parsed = parseStandardMarkdown(text);
@@ -369,10 +412,26 @@ function parseStandardMarkdown(md) {
     // — Parse each question
     const questions = codeBlocks.map((code, idx) => {
       try {
+        // Extract existing question ID from markdown or generate a new one early
+        // First, try to extract the question type for ID generation
+        const typeM = code.match(/^TYPE:\s*(CLOZE|T-F|Short)$/im);
+        const type = typeM ? typeM[1].toUpperCase() : 'UNKNOWN';
+        
+        let questionId = extractQuestionId(code);
+        if (!questionId || !isValidQuestionId(questionId)) {
+          // Extract question text for ID generation (look ahead to Q: line)
+          const qMatch = code.match(/^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|E:|---\s*end-question))/m);
+          const questionText = qMatch ? qMatch[1].replace(/^\r?\n/, '').trim() : '';
+          questionId = generateQuestionId(questionText, type, idx, num);
+          console.log(`🔧 Generated new question ID: ${questionId} for question in section ${num}`);
+        } else {
+          console.log(`🔍 Found existing question ID: ${questionId} for question in section ${num}`);
+        }
+        
         // AUDIO block detection
         if (/^AUDIO:\s*$/im.test(code)) {
           return {
-            id:          `g${num}_q${idx+1}`,
+            id:          questionId,
             type:        'AUDIO',
             text:        'AUDIO:',
           };
@@ -387,21 +446,19 @@ function parseStandardMarkdown(md) {
             const audioFilename = audioFileMatch[1];
             console.log(`Found AUDIO question with file: ${audioFilename}`);
             return {
-              id:          `g${num}_q${idx+1}`,
+              id:          questionId,
               type:        'AUDIO',
               text:        'AUDIO:',
               audioFile:   audioFilename,
             };
           }
         }
-        const typeM = code.match(/^TYPE:\s*(CLOZE|T-F|Short)$/im);
-        const type  = typeM ? typeM[1].toUpperCase() : null;
         
         console.log('🔍 QUESTION PARSE - Raw code:', code);
         console.log('🔍 QUESTION PARSE - Type match:', typeM);
         console.log('🔍 QUESTION PARSE - Detected type:', type);
 
-        if (!type) {
+        if (!type || type === 'UNKNOWN') {
           console.warn(`No type found for question ${idx + 1} in section ${num}`);
           return null;
         }
@@ -539,7 +596,7 @@ function parseStandardMarkdown(md) {
         }
 
         console.log('🔍 MAIN PARSER - Final CLOZE question result:', {
-          id: `g${num}_q${idx+1}`,
+          id: questionId,
           type: 'CLOZE',
           text,
           blanks: blanks,
@@ -548,7 +605,7 @@ function parseStandardMarkdown(md) {
 
         // Create the CLOZE question object
         let clozeQuestion = {
-          id:          `g${num}_q${idx+1}`,
+          id:          questionId,
           type:        'CLOZE',
           text,
           blanks:      blanks,
@@ -581,7 +638,7 @@ function parseStandardMarkdown(md) {
       }
       else if (type === 'T-F') {
         return {
-          id:          `g${num}_q${idx+1}`,
+          id:          questionId,
           type:        'T-F',
           text:        qT,
           answer:      aT,
@@ -603,7 +660,7 @@ function parseStandardMarkdown(md) {
       }
       else if (type === 'SHORT') {
         return {
-          id:          `g${num}_q${idx+1}`,
+          id:          questionId,
           type:        'SHORT',
           text:        qT,
           answer:      aT,

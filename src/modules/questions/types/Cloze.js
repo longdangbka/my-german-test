@@ -5,6 +5,7 @@ import BookmarkButton from '../../bookmarks/BookmarkButton.jsx';
 import { AnkiButton } from '../../anki';
 import CodeBlock from '../components/CodeBlock';
 import TableWithLatex from '../components/TableWithLatex';
+import QuestionIdDisplay from '../../../shared/components/QuestionIdDisplay.jsx';
 import { renderSimpleLatex } from '../../../shared/utils/simpleLatexRenderer';
 
 // Import centralized cloze utilities
@@ -207,6 +208,11 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             )}
           </div>
         </div>
+        
+        {/* Question ID display */}
+        <div className="mt-2 flex justify-end">
+          <QuestionIdDisplay questionId={q.id} />
+        </div>
       </div>
     );
   }
@@ -231,6 +237,11 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             <AnkiButton question={q} />
           )}
         </div>
+      </div>
+      
+      {/* Question ID display */}
+      <div className="mt-2 flex justify-end">
+        <QuestionIdDisplay questionId={cleanedQ.id} />
       </div>
       
       {showFeedback && cleanedQ.explanation && (

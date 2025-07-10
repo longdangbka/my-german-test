@@ -284,7 +284,7 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
         // Parse question content
         const lines = questionContent.split('\n'); // Don't filter out empty lines yet
         const question = {
-          id: `bookmark_${index}`,
+          id: null, // Will be set from ID: line or fallback to generated ID
           type: 'T-F',
           text: '',
           answer: '',
@@ -311,6 +311,10 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           const trimmed = line.trim();
           if (trimmed.startsWith('TYPE:')) {
             question.type = trimmed.substring(5).trim();
+          } else if (trimmed.startsWith('ID:')) {
+            // Extract the actual question ID from the markdown
+            question.id = trimmed.substring(3).trim();
+            console.log(`🔖 BOOKMARK PARSER - Extracted ID: ${question.id}`);
           } else if (trimmed.startsWith('Q:')) {
             currentSection = 'question';
             // If there's content after Q: on the same line, include it
@@ -496,13 +500,34 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           }
         });
         
+        // Ensure question has an ID - generate fallback if needed
+        if (!question.id) {
+          // Generate a fallback ID based on content hash and index
+          const contentHash = simpleHash(question.text || 'empty');
+          question.id = `bookmark_${index}_${contentHash}`;
+          console.log(`🔖 BOOKMARK PARSER - Generated fallback ID: ${question.id}`);
+        }
+        
         if (question.text) {
+          console.log(`🔖 BOOKMARK PARSER - Adding question with ID: ${question.id}`);
           questions.push(question);
         }
       }
     });
     
+    console.log(`🔖 BOOKMARK PARSER - Parsed ${questions.length} bookmarks`);
     return questions;
+  };
+
+  // Simple hash function for fallback IDs
+  const simpleHash = (str) => {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    return Math.abs(hash).toString(36).substring(0, 6);
   };
 
   const checkAnswers = () => {

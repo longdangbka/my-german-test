@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAvailableTests, sortTests } from '../../../shared/utils/testUtils';
+import IdAssignmentPanel from '../../../shared/components/IdAssignmentPanel.jsx';
 
 const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
   const [availableTests, setAvailableTests] = useState([]);
@@ -294,6 +295,9 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
             {regularTests.length} quiz{regularTests.length !== 1 ? 'es' : ''} available + Bookmarks
           </div>
         </div>
+
+        {/* ID Assignment Panel */}
+        <IdAssignmentPanel />
 
         {/* Test Selection Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">

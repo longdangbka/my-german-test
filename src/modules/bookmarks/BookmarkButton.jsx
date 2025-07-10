@@ -1,53 +1,83 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 
 const BookmarkButton = ({ question, quizName, questionIndex }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Create a unique ID for this question
-  const questionId = `${quizName}_${questionIndex}_${question.id || 'q' + questionIndex}`;
+  // Use the question's unique ID directly - this should be stable and unique
+  const questionId = question.id;
 
-  useEffect(() => {
-    checkBookmarkStatus();
-  }, [questionId]);
-
-  const checkBookmarkStatus = async () => {
+  const checkBookmarkStatus = useCallback(async () => {
     try {
+      if (!questionId) {
+        console.warn('No question ID found for bookmark check');
+        return;
+      }
+
       if (window.electron) {
         const bookmarksContent = await window.electron.readVaultFile('bookmarks.md');
         if (bookmarksContent) {
-          // Check if the question text appears in the bookmarks content
-          setIsBookmarked(bookmarksContent.includes(question.text || ''));
+          // Check if the question ID appears in the bookmarks content
+          // Look for the ID line in the bookmarks - escape special regex characters
+          const escapedId = questionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const idPattern = new RegExp(`^ID:\\s*${escapedId}\\s*$`, 'm');
+          const isBookmarked = idPattern.test(bookmarksContent);
+          console.log(`🔖 Checking bookmark status for ID: ${questionId}, found: ${isBookmarked}`);
+          setIsBookmarked(isBookmarked);
         }
       } else {
-        // Browser fallback - check localStorage
+        // Browser fallback - check localStorage  
         const bookmarks = JSON.parse(localStorage.getItem('bookmarks') || '[]');
         setIsBookmarked(bookmarks.some(b => b.id === questionId));
       }
     } catch (error) {
       console.error('Error checking bookmark status:', error);
     }
-  };
+  }, [questionId]);
+
+  useEffect(() => {
+    if (questionId) {
+      checkBookmarkStatus();
+    }
+  }, [questionId, checkBookmarkStatus]);
 
   const toggleBookmark = async () => {
+    if (!questionId) {
+      console.error('Cannot bookmark question without ID');
+      return;
+    }
+
     setLoading(true);
     try {
       if (window.electron) {
         // Electron - read existing bookmarks, modify, and write back
         let bookmarksContent = await window.electron.readVaultFile('bookmarks.md') || '';
         
+        // Escape special regex characters in the question ID
+        const escapedId = questionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const idPattern = new RegExp(`^ID:\\s*${escapedId}\\s*$`, 'm');
+        
         if (isBookmarked) {
-          // Remove bookmark - find and remove the question block
+          // Remove bookmark - find and remove the question block with matching ID
+          console.log(`🔖 Removing bookmark for ID: ${questionId}`);
+          
           const questionBlocks = bookmarksContent.split('--- start-question');
           const filteredBlocks = questionBlocks.filter((block, index) => {
             if (index === 0) return true; // Keep the header
             
-            // Check if this block contains our question text
+            // Check if this block contains our question ID
             const blockContent = '--- start-question' + block;
-            return !blockContent.includes(question.text || '');
+            const hasMatchingId = idPattern.test(blockContent);
+            
+            if (hasMatchingId) {
+              console.log(`🔖 Found and removing block with ID: ${questionId}`);
+            }
+            
+            return !hasMatchingId;
           });
           
           bookmarksContent = filteredBlocks.join('--- start-question');
+          
           // Clean up any empty sections
           if (filteredBlocks.length <= 1) {
             // No bookmarks left, keep just a minimal header
@@ -57,12 +87,23 @@ const BookmarkButton = ({ question, quizName, questionIndex }) => {
 
 `;
           }
+          setIsBookmarked(false);
         } else {
-          // Add bookmark - format as standard quiz question
+          // Add bookmark - check for duplicates first
+          if (idPattern.test(bookmarksContent)) {
+            console.log(`🔖 Question ${questionId} is already bookmarked, updating state`);
+            setIsBookmarked(true);
+            return;
+          }
+
+          console.log(`🔖 Adding bookmark for ID: ${questionId}`);
+
+          // Add bookmark - format as standard quiz question with ID
           // Use rawText to preserve any formatting including cloze syntax for storage
           let bookmarkEntry = `
 --- start-question
 TYPE: ${question.type || 'T-F'}
+ID: ${questionId}
 
 Q: ${question.rawText || question.text || ''}
 `;
@@ -91,11 +132,16 @@ E: ${question.rawExplanation || question.explanation}`;
           }
 
           bookmarksContent += bookmarkEntry;
+          setIsBookmarked(true);
         }
 
         const success = await window.electron.writeVaultFile('bookmarks.md', bookmarksContent);
-        if (success) {
+        if (!success) {
+          // Revert state if write failed
           setIsBookmarked(!isBookmarked);
+          console.error('Failed to write bookmarks file');
+        } else {
+          console.log(`🔖 Successfully ${isBookmarked ? 'removed' : 'added'} bookmark for ID: ${questionId}`);
         }
       } else {
         // Browser fallback - use localStorage
@@ -105,7 +151,15 @@ E: ${question.rawExplanation || question.explanation}`;
           // Remove bookmark
           const filteredBookmarks = bookmarks.filter(b => b.id !== questionId);
           localStorage.setItem('bookmarks', JSON.stringify(filteredBookmarks));
+          setIsBookmarked(false);
         } else {
+          // Check for duplicates
+          if (bookmarks.some(b => b.id === questionId)) {
+            console.log(`🔖 Question ${questionId} is already bookmarked in localStorage, updating state`);
+            setIsBookmarked(true);
+            return;
+          }
+
           // Add bookmark
           bookmarks.push({
             id: questionId,
@@ -114,8 +168,8 @@ E: ${question.rawExplanation || question.explanation}`;
             timestamp: new Date().toISOString()
           });
           localStorage.setItem('bookmarks', JSON.stringify(bookmarks));
+          setIsBookmarked(true);
         }
-        setIsBookmarked(!isBookmarked);
       }
     } catch (error) {
       console.error('Error toggling bookmark:', error);

@@ -8,6 +8,17 @@ AUDIO: ![[audio1_1.mp3]]
 
 --- start-question
 TYPE: Short
+ID: qREFRESHTEST_1_short_ao3g6m
+
+Q: Who invented the famous equation $E = mc^2$ that relates energy?
+
+A: Einstein
+
+--- end-question
+
+--- start-question
+TYPE: Short
+ID: qREFRESH TEST_1_short_n1i1uk
 
 Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
 
@@ -16,16 +27,18 @@ A: Einstein
 --- end-question
 
 --- start-question
-TYPE: TrueFalse
+TYPE: T-F
+ID: qREFRESHTEST_3_t-f_y5kk33
 
 Q: The equation $F = ma$ describes Newton's second law of motion. True or false?
 
-ANSWER: True
+A: True
 
 --- end-question
 
 --- start-question
 TYPE: T-F
+ID: qREFRESH TEST_3_t-f_7kphq2
 
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$32156
 
@@ -134,6 +147,7 @@ Machen Sie bitte während der Führung Handys und Smartphones aus oder stellen S
 
 --- start-question
 TYPE: T-F
+ID: qSECOND SECTION TEST_1_t-f_qj94ip
 
 Q: 
 
@@ -151,7 +165,8 @@ E: "Die Führung ist auf Deutsch und Englisch."
 --- end-question
 
 --- start-question
-TYPE: CLOZE
+TYPE: Cloze
+ID: qSECOND SECTION TEST_2_cloze_lfhxm3
 
 Q: 
 {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
@@ -164,7 +179,7 @@ Q:
 
 $x=5$
 
-$$y=5_{1}$$
+$y=5_{1}$
 
 
 E:
@@ -183,11 +198,13 @@ turn off = ausmachen
 ### Questions
 
 --- start-question
+ID: qAUDIOONLYTESTSECTION_1_audio_ux2yq0
 AUDIO: ![[audio1_2.mp3]]
 --- end-question
 
 --- start-question
 TYPE: T-F
+ID: qAUDIO ONLY TEST SECTION_2_t-f_okfm91
 
 Q: This is a test question in the audio-only section.
 
