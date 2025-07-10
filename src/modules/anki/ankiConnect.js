@@ -196,6 +196,39 @@ export function extractMediaLinks(content) {
 }
 
 /**
+ * Extract audio references with AUDIO: prefix from markdown content
+ * @param {string} content - Markdown content
+ * @returns {Array} - Array of audio file information with AUDIO: prefix
+ */
+export function extractAudioReferences(content) {
+  if (!content) return [];
+  
+  const audioRefs = [];
+  
+  // Extract AUDIO: ![[filename]] pattern
+  const audioRefRegex = /AUDIO:\s*!\[\[([^\]]+)\]\]/g;
+  let match;
+  
+  while ((match = audioRefRegex.exec(content)) !== null) {
+    const filename = match[1];
+    const extension = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+    
+    if (AUDIO_EXTS.includes(extension)) {
+      audioRefs.push({
+        original: match[0],
+        filename: filename,
+        displayText: filename,
+        extension: extension,
+        isAudio: true,
+        isImage: false
+      });
+    }
+  }
+  
+  return audioRefs;
+}
+
+/**
  * Process media files and upload them to Anki
  * @param {Array} mediaLinks - Array of media link objects
  * @returns {Promise<Object>} - Map of original filenames to Anki filenames
@@ -625,9 +658,10 @@ export function convertCodeBlockToHtml(code, language = '') {
  * Convert markdown content to HTML for Anki with proper media handling
  * @param {string} content - Markdown content
  * @param {object} question - Question object with orderedElements
+ * @param {boolean} preserveTables - Whether to preserve tables as markdown (default: true for Anki)
  * @returns {Promise<string>} - HTML content with proper media handling
  */
-export async function convertMarkdownToHtmlAdvanced(content, question = null) {
+export async function convertMarkdownToHtmlAdvanced(content, question = null, preserveTables = true) {
   if (!content) return '';
   
   let html = content;
@@ -689,7 +723,13 @@ export async function convertMarkdownToHtmlAdvanced(content, question = null) {
           break;
           
         case 'table':
-          html += convertTableToHtml(element.content);
+          if (preserveTables) {
+            // Keep table as markdown for Anki export
+            html += element.content;
+          } else {
+            // Convert to HTML for display
+            html += convertTableToHtml(element.content);
+          }
           break;
           
         case 'latexPlaceholder':
@@ -734,10 +774,16 @@ export async function convertMarkdownToHtmlAdvanced(content, question = null) {
     // Process inline code
     html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
     
-    // Process tables (basic markdown table)
-    html = html.replace(/(\|.*\|[\s]*\n)+/g, (match) => {
-      return convertTableToHtml(match.trim());
-    });
+    // Process tables - preserve as markdown for Anki, convert to HTML for display
+    if (preserveTables) {
+      // Keep tables as markdown for Anki export (preserves cloze deletions)
+      // Tables are already in markdown format, no conversion needed
+    } else {
+      // Convert tables to HTML for display
+      html = html.replace(/(\|.*\|[\s]*\n)+/g, (match) => {
+        return convertTableToHtml(match.trim());
+      });
+    }
     
     // Process basic markdown
     html = html
@@ -876,16 +922,13 @@ export async function processContentForAnki(content, question = null) {
     }
   }
   
-  // Step 3: Convert tables to HTML (but keep everything else as markdown)
+  // Step 3: Keep tables as markdown for Anki (do not convert to HTML)
+  // This preserves cloze deletions and other markdown syntax within table cells
   const tableRegex = /(\|[^\n]*\|[\s]*\n[\s]*\|[^\n]*\|[\s]*\n(?:\|[^\n]*\|[\s]*\n)*)/g;
   const tables = processedContent.match(tableRegex);
   if (tables) {
-    console.log(`Found ${tables.length} tables to convert`);
-    processedContent = processedContent.replace(tableRegex, (match) => {
-      const htmlTable = convertTableToHtml(match.trim());
-      console.log(`Converted table to HTML (${htmlTable.length} chars)`);
-      return htmlTable;
-    });
+    console.log(`Found ${tables.length} markdown tables - preserving as markdown for Anki export`);
+    // Tables are already in markdown format, no conversion needed for Anki
   }
   
   return processedContent;
@@ -946,18 +989,73 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
   console.log('  - questionText:', questionText);
   console.log('  - explanationText:', explanationText);
   
+  // Extract audio references from question content to handle separately
+  let audioRefs = extractAudioReferences(questionText);
+  console.log('🔧 PREPARE DEBUG - Found audio references from text:', audioRefs);
+  
+  // Also check if question has audioFile property (from bookmark parsing)
+  if (question.audioFile) {
+    console.log('🔧 PREPARE DEBUG - Found audioFile property:', question.audioFile);
+    // Add the audioFile to audioRefs if not already there
+    const filename = question.audioFile;
+    const extension = filename.substring(filename.lastIndexOf('.')).toLowerCase();
+    
+    if (AUDIO_EXTS.includes(extension)) {
+      // Check if this audio file is not already in audioRefs
+      const exists = audioRefs.some(ref => ref.filename === filename);
+      if (!exists) {
+        audioRefs.push({
+          original: `AUDIO: ![[${filename}]]`, // Reconstruct for consistency
+          filename: filename,
+          displayText: filename,
+          extension: extension,
+          isAudio: true,
+          isImage: false
+        });
+      }
+    }
+  }
+  
+  console.log('🔧 PREPARE DEBUG - Final audio references:', audioRefs);
+  
+  // Remove AUDIO: references from question text (they'll be added to the back side)
+  let cleanQuestionText = questionText;
+  audioRefs.forEach(audioRef => {
+    cleanQuestionText = cleanQuestionText.replace(audioRef.original, '').trim();
+  });
+  
   // Process content for Anki (images to HTML, tables to HTML, keep rest as markdown)
-  if (questionText.trim()) {
+  if (cleanQuestionText.trim()) {
     // For cloze cards, fix cloze numbering BEFORE processing content
     if (finalNoteType === 'Cloze') {
-      const beforeFix = questionText;
-      questionText = fixClozeNumbering(questionText);
+      const beforeFix = cleanQuestionText;
+      cleanQuestionText = fixClozeNumbering(cleanQuestionText);
       console.log('🔧 PREPARE DEBUG - Cloze numbering fix:');
       console.log('  - Before:', beforeFix);
-      console.log('  - After:', questionText);
+      console.log('  - After:', cleanQuestionText);
     }
-    questionText = await processContentForAnki(questionText, question);
-    console.log('🔧 PREPARE DEBUG - After processContentForAnki:', questionText);
+    cleanQuestionText = await processContentForAnki(cleanQuestionText, question);
+    console.log('🔧 PREPARE DEBUG - After processContentForAnki:', cleanQuestionText);
+  }
+  
+  // Process audio references and create audio content for back side
+  let audioContent = '';
+  if (audioRefs.length > 0) {
+    console.log('🔧 PREPARE DEBUG - Processing audio references...');
+    try {
+      const audioMediaMap = await processMediaFiles(audioRefs);
+      console.log('🔧 PREPARE DEBUG - Audio processing result:', audioMediaMap);
+      
+      // Create audio tags for Anki
+      audioRefs.forEach(audioRef => {
+        const processedFilename = audioMediaMap[audioRef.filename] || audioRef.filename;
+        audioContent += `[sound:${processedFilename}] `;
+      });
+      audioContent = audioContent.trim();
+      console.log('🔧 PREPARE DEBUG - Generated audio content:', audioContent);
+    } catch (error) {
+      console.warn('🔧 PREPARE DEBUG - Error processing audio files:', error);
+    }
   }
   
   if (explanationText.trim()) {
@@ -974,13 +1072,14 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
   }
   
   // Ensure we have at least some content
-  if (!questionText.trim()) {
-    questionText = 'No question text available';
+  if (!cleanQuestionText.trim()) {
+    cleanQuestionText = 'No question text available';
   }
   
   console.log('🔧 PREPARE DEBUG - Final processed content:');
-  console.log('  - questionText:', questionText);
+  console.log('  - cleanQuestionText:', cleanQuestionText);
   console.log('  - explanationText:', explanationText);
+  console.log('  - audioContent:', audioContent);
   
   // Map fields based on what's available in the note type
   if (finalNoteType === 'Cloze') {
@@ -991,16 +1090,23 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
     
     const textField = clozeTextFields.find(field => availableFields.includes(field));
     if (textField) {
-      fields[textField] = questionText;
+      fields[textField] = cleanQuestionText;
       console.log('🔧 PREPARE DEBUG - Set', textField, 'field for Cloze card:', fields[textField]);
     }
     
+    // Set explanation in extra field if available
     if (explanationText.trim()) {
       const extraField = clozeExtraFields.find(field => availableFields.includes(field));
       if (extraField) {
         fields[extraField] = explanationText;
         console.log('🔧 PREPARE DEBUG - Set', extraField, 'field for Cloze card:', fields[extraField]);
       }
+    }
+    
+    // Set audio content in dedicated AUDIO field if available
+    if (audioContent && availableFields.includes('AUDIO')) {
+      fields['AUDIO'] = audioContent;
+      console.log('🔧 PREPARE DEBUG - Set AUDIO field for Cloze card:', fields['AUDIO']);
     }
   } else {
     // For other note types, use processed content
@@ -1011,17 +1117,17 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
     console.log('🔧 PREPARE DEBUG - Looking for question field in:', questionFieldNames);
     console.log('🔧 PREPARE DEBUG - Available fields:', availableFields);
     
-    // Set question field with processed content
+    // Set question field with processed content (without audio references)
     const questionField = questionFieldNames.find(field => availableFields.includes(field));
     console.log('🔧 PREPARE DEBUG - Found question field:', questionField);
     if (questionField) {
-      fields[questionField] = questionText;
+      fields[questionField] = cleanQuestionText;
       console.log('🔧 PREPARE DEBUG - Set', questionField, 'field for non-Cloze card:', fields[questionField]);
     } else {
       console.log('🔧 PREPARE DEBUG - NO QUESTION FIELD FOUND!');
     }
     
-    // Set answer field with raw content
+    // Set answer field with raw content (without adding audio here)
     const answerField = answerFieldNames.find(field => availableFields.includes(field));
     console.log('🔧 PREPARE DEBUG - Found answer field:', answerField);
     if (answerField) {
@@ -1043,6 +1149,12 @@ export async function prepareQuestionForAnkiAsync(question, noteType = null) {
       }
     } else {
       console.log('🔧 PREPARE DEBUG - NO EXPLANATION TEXT TO SET');
+    }
+    
+    // Set audio content in dedicated AUDIO field if available
+    if (audioContent && availableFields.includes('AUDIO')) {
+      fields['AUDIO'] = audioContent;
+      console.log('🔧 PREPARE DEBUG - Set AUDIO field for non-Cloze card:', fields['AUDIO']);
     }
   }
   
