@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import QuestionList from '../questions/components/QuestionList';
 import TestControls from '../testing/components/TestControls';
 import QuestionItem from './QuestionItem';
+import ThemeSelector from '../../shared/components/ThemeSelector';
 import { getVaultAudioSrc } from '../../shared/utils/testUtils';
 import { 
   extractMediaLinks, 
@@ -15,7 +16,7 @@ import {
   processClozeElements
 } from '../../cloze.js';
 
-const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
+const BookmarksViewer = ({ onBack }) => {
   const [bookmarks, setBookmarks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -824,13 +825,7 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
             >
               🧪 Test Media
             </button>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            <ThemeSelector />
           </div>
         </div>
 

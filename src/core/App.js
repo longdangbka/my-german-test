@@ -6,6 +6,8 @@ import TestControls from '../modules/testing/components/TestControls';
 import Navigation from '../modules/navigation/Navigation';
 import TestSelector from '../modules/testing/components/TestSelector';
 import BookmarksViewer from '../modules/bookmarks/BookmarksViewer';
+import ThemeSelector from '../shared/components/ThemeSelector';
+import { useTheme } from '../shared/contexts/ThemeContext';
 import { renderSimpleLatex } from '../shared/utils/simpleLatexRenderer';
 import '../assets/styles/inline-latex.css';
 
@@ -14,8 +16,8 @@ import { appInitializer } from '../shared/services/appInitializer.js';
 
 function App() {
   const [selectedTest, setSelectedTest] = useState(null);
-  const [theme, setTheme] = useState('light');
   const [appInitialized, setAppInitialized] = useState(false);
+  const { activeTheme } = useTheme(); // Use theme from context
   
   // Use an object to store showFeedback per section
   const [showFeedback, setShowFeedback] = useState({});
@@ -44,16 +46,6 @@ function App() {
 
     initializeApp();
   }, []);
-
-  useEffect(() => {
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-      document.body.classList.add('dark:bg-gray-900');
-    } else {
-      document.documentElement.classList.remove('dark');
-      document.body.classList.remove('dark:bg-gray-900');
-    }
-  }, [theme]);
 
   const handleTestSelect = (filename) => {
     setSelectedTest(filename);
@@ -93,24 +85,18 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedTest, qd]);
 
-  const toggleTheme = () => {
-    setTheme(prevTheme => (prevTheme === 'light' ? 'dark' : 'light'));
-  };
-
   // If no test is selected, show the test selector
   if (!selectedTest) {
     return (
       <TestSelector 
         onTestSelect={handleTestSelect}
-        theme={theme}
-        toggleTheme={toggleTheme}
       />
     );
   }
 
   // Show BookmarksViewer for bookmarks.md
   if (isBookmarksView) {
-    return <BookmarksViewer onBack={handleBackToTestSelection} theme={theme} toggleTheme={toggleTheme} />;
+    return <BookmarksViewer onBack={handleBackToTestSelection} />;
   }
 
   if (qd.error) return <div className="p-8 text-center text-red-600">{qd.error}</div>;
@@ -331,12 +317,6 @@ function App() {
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
   };
 
-  // Handle theme toggle
-  const handleThemeToggle = () => {
-    console.log('🔍 Theme toggle clicked, current theme:', theme);
-    toggleTheme();
-  };
-
   // Only show feedback for the current section
   const showCurrentFeedback = !!showFeedback[qd.currentIndex];
 
@@ -357,13 +337,7 @@ function App() {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
             {renderSimpleLatex(qd.currentGroup.title)}
           </h2>
-          <button
-            onClick={handleThemeToggle}
-            className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-          >
-            {theme === 'light' ? '🌙' : '☀️'}
-          </button>
+          <ThemeSelector />
         </div>
         
         {(qd.currentGroup.transcript || qd.currentGroup.audioFile || qd.currentGroup.questions?.some(q => q.audioFile)) && <AudioPlayer group={qd.currentGroup} />}

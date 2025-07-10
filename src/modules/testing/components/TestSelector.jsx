@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { getAvailableTests, sortTests } from '../../../shared/utils/testUtils';
 import IdAssignmentPanel, { SortDropdown } from '../../../shared/components/IdAssignmentPanel.jsx';
+import ThemeSelector from '../../../shared/components/ThemeSelector';
 
-const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
+const TestSelector = ({ onTestSelect }) => {
   const [availableTests, setAvailableTests] = useState([]);
   const [sortedTests, setSortedTests] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -119,13 +120,7 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
               <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
                 Quiz Center
               </h1>
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-                title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-              >
-                {theme === 'light' ? '🌙' : '☀️'}
-              </button>
+              <ThemeSelector />
             </div>
           </div>
 
@@ -198,13 +193,7 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
             <h1 className="text-4xl font-bold text-gray-900 dark:text-gray-100">
               Quiz Center
             </h1>
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
-              title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-            >
-              {theme === 'light' ? '🌙' : '☀️'}
-            </button>
+            <ThemeSelector />
           </div>
           <p className="text-lg text-gray-600 dark:text-gray-300">
             Select a quiz to begin
