@@ -187,7 +187,7 @@ function renderOrderedElements(elements, question = null) {
   return result;
 }
 
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, showAnkiButton = false }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, groupAudio = null, showAnkiButton = false }) {
   // Extract the actual value for this question
   const questionValue = typeof value === 'object' ? (value?.[q.id] || '') : (value || '');
   const questionFeedback = typeof feedback === 'object' ? feedback?.[q.id] : feedback;
@@ -273,7 +273,8 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           <BookmarkButton 
             question={q} 
             quizName={quizName} 
-            questionIndex={seq} 
+            questionIndex={seq}
+            groupAudio={groupAudio}
           />
           {showAnkiButton && (
             <AnkiButton question={q} />

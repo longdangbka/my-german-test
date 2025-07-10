@@ -381,6 +381,7 @@ function App() {
           onChange={e => qd.setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
           showFeedback={showCurrentFeedback}
           quizName={selectedTest}
+          currentGroup={qd.currentGroup}
           individualFeedback={individualFeedback}
           onShowIndividualAnswer={handleShowIndividualAnswer}
         />

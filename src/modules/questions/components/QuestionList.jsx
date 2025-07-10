@@ -9,10 +9,31 @@ export default function QuestionList({
   showFeedback, 
   seqStart = 1, 
   quizName, 
+  currentGroup = null,
   showAnkiButton = false,
   individualFeedback = {},
   onShowIndividualAnswer
 }) {
+  // Extract audio information from the current group
+  const getGroupAudio = () => {
+    if (!currentGroup) return null;
+    
+    // Check if group has audioFile property
+    if (currentGroup.audioFile) {
+      return currentGroup.audioFile;
+    }
+    
+    // Check if any AUDIO question in the group has audioFile
+    const audioQuestion = currentGroup.questions?.find(q => q.type === 'AUDIO' && q.audioFile);
+    if (audioQuestion?.audioFile) {
+      return audioQuestion.audioFile;
+    }
+    
+    return null;
+  };
+  
+  const groupAudio = getGroupAudio();
+  
   let seq = seqStart;
   return (
     <div className="space-y-4">
@@ -33,6 +54,7 @@ export default function QuestionList({
               showFeedback={shouldShowFeedback}
               seq={seq++}
               quizName={quizName}
+              groupAudio={groupAudio}
               showAnkiButton={showAnkiButton}
             />
             

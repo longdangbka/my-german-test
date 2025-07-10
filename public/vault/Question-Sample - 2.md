@@ -154,7 +154,7 @@ $x=5$
 ## SECOND SECTION 2 TEST
 
 ```
-AUDIO:
+AUDIO: ![[audio1_1.mp3]]
 ```
 
 ### Transcript

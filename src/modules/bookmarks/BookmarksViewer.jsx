@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QuestionList from '../questions/components/QuestionList';
 import TestControls from '../testing/components/TestControls';
+import { getVaultAudioSrc } from '../../shared/utils/testUtils';
 import { 
   extractMediaLinks, 
   processContentForAnki 
@@ -134,6 +135,140 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
       console.error('Error during media upload test:', error);
       alert('Media upload test failed - check console for details');
     }
+  };
+
+  // Enhanced audio player component for bookmarked questions with full controls
+  const BookmarkAudioPlayer = ({ audioFile }) => {
+    const [audioSrc, setAudioSrc] = useState(null);
+    const [loading, setLoading] = useState(true);
+    const [playbackRate, setPlaybackRate] = useState(1);
+    const audioRef = useRef();
+
+    useEffect(() => {
+      const loadAudio = async () => {
+        if (!audioFile) {
+          setLoading(false);
+          return;
+        }
+        
+        try {
+          console.log('🔊 BOOKMARK AUDIO - Loading audio:', audioFile);
+          const src = await getVaultAudioSrc(audioFile);
+          if (src) {
+            setAudioSrc(src);
+            console.log('🔊 BOOKMARK AUDIO - Successfully loaded audio');
+          } else {
+            console.warn('🔊 BOOKMARK AUDIO - Failed to load audio:', audioFile);
+          }
+        } catch (error) {
+          console.error('🔊 BOOKMARK AUDIO - Error loading audio:', error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      loadAudio();
+    }, [audioFile]);
+
+    // Update playback rate on audio element
+    useEffect(() => {
+      if (audioRef.current) {
+        audioRef.current.playbackRate = playbackRate;
+      }
+    }, [playbackRate]);
+
+    // No keyboard controls to avoid conflicts with multiple audio players
+
+    const speedOptions = [1, 0.8, 0.6, 0.4, 0.3];
+
+    if (!audioFile || loading) {
+      return null;
+    }
+
+    if (!audioSrc) {
+      return (
+        <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
+          <span className="text-sm text-yellow-800 dark:text-yellow-200">
+            🔊 Audio: {audioFile} (unavailable)
+          </span>
+        </div>
+      );
+    }
+
+    // Handle audio loading errors
+    const handleAudioError = () => {
+      console.error('🔊 BOOKMARK AUDIO - Failed to load:', audioFile);
+    };
+
+    return (
+      <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
+        <div className="flex items-center space-x-2 mb-2">
+          <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+            🔊 Audio: {audioFile}
+          </span>
+        </div>
+        
+        {/* Audio element with full controls */}
+        <audio 
+          ref={audioRef}
+          controls 
+          className="w-full mb-2"
+          onError={handleAudioError}
+          preload="metadata"
+        >
+          <source src={audioSrc} type="audio/mpeg" />
+          <source src={audioSrc} type="audio/wav" />
+          <source src={audioSrc} type="audio/mp4" />
+          <source src={audioSrc} type="audio/ogg" />
+          Your browser does not support the audio element.
+        </audio>
+        
+        {/* Control buttons for skip and speed */}
+        <div className="flex gap-2 items-center flex-wrap">
+          <button
+            type="button"
+            className="px-2 py-1 text-xs rounded border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
+              }
+            }}
+            title="Go back 1.5 seconds"
+          >
+            ⏪ 1.5s
+          </button>
+          
+          {/* Speed control buttons */}
+          {speedOptions.map((rate) => (
+            <button
+              key={rate}
+              onClick={() => setPlaybackRate(rate)}
+              className={`px-2 py-1 text-xs rounded border transition-all duration-200 ${
+                playbackRate === rate
+                  ? 'bg-blue-500 dark:bg-blue-600 text-white border-blue-500 dark:border-blue-600'
+                  : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600'
+              }`}
+              title={`Set playback speed to ${rate}x`}
+            >
+              {rate}x
+            </button>
+          ))}
+          
+          <button
+            type="button"
+            className="px-2 py-1 text-xs rounded border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
+              }
+            }}
+            title="Go forward 1.5 seconds"
+          >
+            1.5s ⏩
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Helper function to parse content with full markdown support
@@ -318,6 +453,10 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
             // Extract the actual question ID from the markdown
             question.id = trimmed.substring(3).trim();
             console.log(`🔖 BOOKMARK PARSER - Extracted ID: ${question.id}`);
+          } else if (trimmed.startsWith('AUDIO:')) {
+            // Extract audio file information
+            question.audioFile = trimmed.substring(6).trim();
+            console.log(`🔖 BOOKMARK PARSER - Extracted audio: ${question.audioFile}`);
           } else if (trimmed.startsWith('Q:')) {
             currentSection = 'question';
             // If there's content after Q: on the same line, include it
@@ -823,17 +962,32 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
           </div>
         ) : (
           <>
-            <QuestionList
-              questions={bookmarks}
-              answers={answers}
-              feedback={feedback}
-              onChange={e => setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
-              showFeedback={showFeedback}
-              quizName="bookmarks"
-              showAnkiButton={true}
-              individualFeedback={individualFeedback}
-              onShowIndividualAnswer={handleShowIndividualAnswer}
-            />
+            {/* Render questions with audio players */}
+            <div className="space-y-4">
+              {bookmarks.map((question, index) => (
+                <div key={question.id || index}>
+                  {/* Render audio player if question has audio */}
+                  {question.audioFile && (
+                    <BookmarkAudioPlayer audioFile={question.audioFile} />
+                  )}
+                  
+                  {/* Render individual question */}
+                  <QuestionList
+                    questions={[question]}
+                    answers={answers}
+                    feedback={feedback}
+                    onChange={e => setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
+                    showFeedback={showFeedback}
+                    quizName="bookmarks"
+                    showAnkiButton={true}
+                    individualFeedback={individualFeedback}
+                    onShowIndividualAnswer={handleShowIndividualAnswer}
+                    seqStart={index + 1}
+                  />
+                </div>
+              ))}
+            </div>
+            
             <TestControls
               onCheck={checkAnswers}
               onShow={doTestForMe}

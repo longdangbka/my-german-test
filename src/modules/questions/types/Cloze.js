@@ -55,7 +55,7 @@ export function initFeedback(q) {
   });
   return out;
 }
-export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, showAnkiButton = false }) {
+export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quizName, groupAudio = null, showAnkiButton = false }) {
   // Debugging info for developer troubleshooting
   console.log('🔍 CLOZE RENDERER - Rendering CLOZE question:', q.id);
   console.log('🔍 CLOZE RENDERER - Blanks found:', q.blanks?.length || 0);
@@ -201,7 +201,8 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
             <BookmarkButton 
               question={q} 
               quizName={quizName} 
-              questionIndex={seq} 
+              questionIndex={seq}
+              groupAudio={groupAudio}
             />
             {showAnkiButton && (
               <AnkiButton question={q} />
@@ -231,7 +232,8 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
           <BookmarkButton 
             question={cleanedQ} 
             quizName={quizName} 
-            questionIndex={seq} 
+            questionIndex={seq}
+            groupAudio={groupAudio}
           />
           {showAnkiButton && (
             <AnkiButton question={q} />

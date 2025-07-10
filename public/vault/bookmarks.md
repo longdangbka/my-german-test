@@ -4,39 +4,49 @@
 
 
 --- start-question
-TYPE: CLOZE
-ID: qSECONDSECTION2TEST_2_cloze_d16756
+TYPE: SHORT
+ID: qREFRESHTEST_1_short_ao3g6m
 
-Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
+Q: Who invented the famous equation $E = mc^2$ that relates energy?
 
-| {{c1::a}}   | b   |
+
+A: Einstein
+
+--- end-question
+
+
+--- start-question
+TYPE: T-F
+ID: qSECONDSECTION2TEST_1_t-f_g2vqhy
+
+AUDIO: audio1_1.mp3
+
+Q: | a   | $b+5$   |
 | --- | --- |
 | 1   | 2   |
 
 
+Die Führung im Schloss wird nur auf Deutsch angeboten.
 
-$x=5$
-
-$y=5_{1}$
-
+Die Führung im Schloss wird nur auf Deutsch angeboten 2.
 
 
-
-E:  
-| $a^2$  | b  |
-| --- | --- |
-| 1   | 2   |
-
-ausmachen = to turn off
-turn off = ausmachen
+A: F
+E:  "Die Führung ist auf Deutsch und Englisch."
 
 --- end-question
 
 --- start-question
 TYPE: SHORT
-ID: qREFRESHTEST_1_short_ao3g6m
+ID: qREFRESHTEST_1_short_1wvt8j
+
+AUDIO: audio1_1.mp3
 
 Q: Who invented the famous equation $E = mc^2$ that relates energy?
+$x=5$
+
+
+$y=5$
 
 
 A: Einstein

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
-const BookmarkButton = ({ question, quizName, questionIndex }) => {
+const BookmarkButton = ({ question, quizName, questionIndex, groupAudio = null }) => {
   const [isBookmarked, setIsBookmarked] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -98,12 +98,35 @@ const BookmarkButton = ({ question, quizName, questionIndex }) => {
 
           console.log(`🔖 Adding bookmark for ID: ${questionId}`);
 
+          // Check for audio information from the question or group
+          let audioFile = null;
+          
+          // First check if the question itself has audio (for AUDIO type questions)
+          if (question.audioFile) {
+            audioFile = question.audioFile;
+            console.log(`🔖 Found audio file in question: ${audioFile}`);
+          }
+          // Then check if group has audio passed down
+          else if (groupAudio) {
+            audioFile = groupAudio;
+            console.log(`🔖 Found audio file in group: ${audioFile}`);
+          }
+
           // Add bookmark - format as standard quiz question with ID
           // Use rawText to preserve any formatting including cloze syntax for storage
           let bookmarkEntry = `
 --- start-question
 TYPE: ${question.type || 'T-F'}
 ID: ${questionId}
+`;
+
+          // Add audio information if found
+          if (audioFile) {
+            bookmarkEntry += `
+AUDIO: ${audioFile}`;
+          }
+
+          bookmarkEntry += `
 
 Q: ${question.rawText || question.text || ''}
 `;
