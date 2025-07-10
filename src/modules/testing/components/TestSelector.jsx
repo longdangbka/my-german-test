@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getAvailableTests, sortTests } from '../../../shared/utils/testUtils';
-import IdAssignmentPanel from '../../../shared/components/IdAssignmentPanel.jsx';
+import IdAssignmentPanel, { SortDropdown } from '../../../shared/components/IdAssignmentPanel.jsx';
 
 const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
   const [availableTests, setAvailableTests] = useState([]);
@@ -137,46 +137,19 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
             <p className="text-red-700 dark:text-red-300">Is Electron: {!!window.electron ? 'YES' : 'NO'}</p>
           </div>
 
-          {/* Sorting Controls - Show even when no tests */}
-          <div className="flex flex-wrap justify-center gap-4 mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mx-auto max-w-4xl">
-            <div className="w-full text-center mb-2">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Quiz Sorting Options (No Tests Found)</h2>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</span>
-              <button
-                onClick={() => handleSortChange('name')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
-                  sortBy === 'name'
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </button>
-              <button
-                onClick={() => handleSortChange('created')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
-                  sortBy === 'created'
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                Created {sortBy === 'created' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </button>
-              <button
-                onClick={() => handleSortChange('modified')}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors border ${
-                  sortBy === 'modified'
-                    ? 'bg-blue-500 text-white border-blue-500'
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-                }`}
-              >
-                Modified {sortBy === 'modified' && (sortOrder === 'asc' ? '↑' : '↓')}
-              </button>
-            </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 w-full text-center">
-              0 quizzes available
+          {/* Compact Utility Toolbar */}
+          <div className="flex justify-center mb-8">
+            <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tools:</span>
+              <SortDropdown 
+                sortBy={sortBy} 
+                sortOrder={sortOrder} 
+                onSortChange={handleSortChange} 
+              />
+              <IdAssignmentPanel compact={true} />
+              <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+                0 quizzes available
+              </div>
             </div>
           </div>
 
@@ -238,66 +211,21 @@ const TestSelector = ({ onTestSelect, theme, toggleTheme }) => {
           </p>
         </div>
 
-        {/* Sorting Controls */}
-        <div className="flex flex-wrap justify-center gap-4 mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-md mx-auto max-w-4xl">
-          <div className="w-full text-center mb-2">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Quiz Sorting Options</h2>
-          </div>
-          <div className="flex items-center space-x-3">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Sort by:</span>
-            
-            <button
-              onClick={() => handleSortChange('name')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border ${
-                sortBy === 'name'
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-              }`}
-              title="Sort by name"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a.997.997 0 01-1.414 0l-7-7A1.997 1.997 0 013 12V7a4 4 0 014-4z" />
-              </svg>
-              Name {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            
-            <button
-              onClick={() => handleSortChange('created')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border ${
-                sortBy === 'created'
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-              }`}
-              title="Sort by creation date"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Created {sortBy === 'created' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-            
-            <button
-              onClick={() => handleSortChange('modified')}
-              className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors border ${
-                sortBy === 'modified'
-                  ? 'bg-blue-500 text-white border-blue-500'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600'
-              }`}
-              title="Sort by last modified date"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Modified {sortBy === 'modified' && (sortOrder === 'asc' ? '↑' : '↓')}
-            </button>
-          </div>
-          <div className="text-sm text-gray-500 dark:text-gray-400 w-full text-center">
-            {regularTests.length} quiz{regularTests.length !== 1 ? 'es' : ''} available + Bookmarks
+        {/* Compact Utility Toolbar */}
+        <div className="flex justify-center mb-8">
+          <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Tools:</span>
+            <SortDropdown 
+              sortBy={sortBy} 
+              sortOrder={sortOrder} 
+              onSortChange={handleSortChange} 
+            />
+            <IdAssignmentPanel compact={true} />
+            <div className="text-xs text-gray-500 dark:text-gray-400 ml-2">
+              {regularTests.length} quiz{regularTests.length !== 1 ? 'es' : ''} + Bookmarks
+            </div>
           </div>
         </div>
-
-        {/* ID Assignment Panel */}
-        <IdAssignmentPanel />
 
         {/* Test Selection Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
