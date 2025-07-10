@@ -157,6 +157,14 @@ function App() {
     // Generate feedback for all questions based on their current state
     const newFeedback = {};
     qd.currentGroup.questions.forEach(q => {
+      console.log('🔍 Processing main quiz question:', {
+        id: q.id,
+        type: q.type,
+        answer: q.answer,
+        userAnswer: qd.answers[q.id] || '',
+        hasBlanks: !!(q.blanks && q.blanks.length > 0)
+      });
+      
       // Skip AUDIO questions as they don't have answers to check
       if (q.type === 'AUDIO') {
         return;
@@ -169,6 +177,15 @@ function App() {
           // Compare user answer with correct answer (case-insensitive, trimmed)
           const isCorrect = userAnswer.trim().toLowerCase() === blank.trim().toLowerCase();
           newFeedback[key] = isCorrect ? 'correct' : 'incorrect';
+          
+          console.log('🔍 Main Quiz Cloze Comparison Debug:', {
+            questionId: q.id,
+            blankIndex: bi,
+            key,
+            userAnswer: `"${userAnswer}"`,
+            correctAnswer: `"${blank}"`,
+            isCorrect
+          });
         });
       } else {
         const userAnswer = qd.answers[q.id] || '';
@@ -183,7 +200,7 @@ function App() {
           
           isCorrect = userAnswerConverted === q.answer;
           
-          console.log('🔍 T-F Comparison Debug:', {
+          console.log('🔍 Main Quiz T-F Comparison Debug:', {
             questionId: q.id,
             userAnswer,
             userAnswerConverted,
@@ -194,7 +211,7 @@ function App() {
           // Case-insensitive comparison for short answers
           isCorrect = userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase();
           
-          console.log('🔍 Short Answer Comparison Debug:', {
+          console.log('🔍 Main Quiz Short Answer Comparison Debug:', {
             questionId: q.id,
             userAnswer: `"${userAnswer}"`,
             userAnswerTrimmed: `"${userAnswer.trim().toLowerCase()}"`,
@@ -202,10 +219,25 @@ function App() {
             correctAnswerTrimmed: `"${(q.answer || '').trim().toLowerCase()}"`,
             isCorrect
           });
+        } else {
+          // Handle any other question types or fallback
+          console.log('🔍 Main Quiz Unknown Type Debug:', {
+            questionId: q.id,
+            type: q.type,
+            userAnswer: `"${userAnswer}"`,
+            correctAnswer: `"${q.answer || ''}"`,
+            exactMatch: userAnswer === q.answer,
+            caseInsensitiveMatch: userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase()
+          });
+          
+          // Default to case-insensitive comparison
+          isCorrect = userAnswer.trim().toLowerCase() === (q.answer || '').trim().toLowerCase();
         }
         newFeedback[q.id] = isCorrect ? 'correct' : 'incorrect';
       }
     });
+    
+    console.log('🔍 Main Quiz Final Feedback:', newFeedback);
     
     // Set the feedback and show feedback mode
     qd.setFeedback(newFeedback);
