@@ -13,7 +13,6 @@ ID: qREFRESHTEST_1_short_ao3g6m
 Q: Who invented the famous equation $E = mc^2$ that relates energy?
 
 A: Einstein
-
 --- end-question
 
 --- start-question

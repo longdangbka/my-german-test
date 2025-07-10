@@ -500,36 +500,56 @@ export function ClozeBlank({
   const expectedAnswer = question.blanks && question.blanks[blankIndex];
 
   if (showFeedback) {
-    return React.createElement('span', {
-      className: 'inline-flex items-center gap-2 mx-2'
-    }, [
-      // User answer or blank indicator - now with LaTeX support
-      userAnswer ? React.createElement('span', {
+    const elements = [];
+    
+    // Always show user's answer if they provided one
+    if (userAnswer) {
+      elements.push(React.createElement('span', {
         key: 'user-answer',
         className: `inline-block px-3 py-1 border rounded text-sm font-medium ${
           isCorrect
             ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
             : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
         }`
-      }, renderLatex ? renderLatex(userAnswer) : userAnswer) : React.createElement('span', {
-        key: 'blank-indicator',
-        className: 'inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
-      }, '(blank)'),
+      }, renderLatex ? renderLatex(userAnswer) : userAnswer));
       
-      // Correct/incorrect symbol
-      React.createElement('span', {
+      // Add feedback symbol after user answer
+      elements.push(React.createElement('span', {
         key: 'feedback-symbol',
         className: isCorrect 
           ? 'text-green-500 dark:text-green-400'
           : 'text-red-500 dark:text-red-400'
-      }, isCorrect ? '✅' : '❌'),
+      }, isCorrect ? '✅' : '❌'));
+    } else {
+      // If no user answer, show blank indicator
+      elements.push(React.createElement('span', {
+        key: 'blank-indicator',
+        className: 'inline-block px-3 py-1 border rounded text-sm font-medium bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400'
+      }, '(blank)'));
       
-      // Expected answer - now with LaTeX support
-      React.createElement('span', {
+      // Add X symbol for blank answer
+      elements.push(React.createElement('span', {
+        key: 'feedback-symbol',
+        className: 'text-red-500 dark:text-red-400'
+      }, '❌'));
+    }
+    
+    // Always show the correct answer for learning purposes
+    if (expectedAnswer) {
+      elements.push(React.createElement('span', {
+        key: 'correct-label',
+        className: 'text-xs text-gray-500 dark:text-gray-400 font-medium'
+      }, '→'));
+      
+      elements.push(React.createElement('span', {
         key: 'expected-answer',
-        className: 'inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200'
-      }, expectedAnswer ? (renderLatex ? renderLatex(expectedAnswer) : expectedAnswer) : '')
-    ]);
+        className: 'inline-block px-3 py-1 bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-600 rounded text-sm font-medium text-blue-800 dark:text-blue-200'
+      }, renderLatex ? renderLatex(expectedAnswer) : expectedAnswer));
+    }
+    
+    return React.createElement('span', {
+      className: 'inline-flex items-center gap-2 mx-2'
+    }, elements);
   }
 
   // Input mode

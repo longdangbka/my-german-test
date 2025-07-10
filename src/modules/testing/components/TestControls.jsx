@@ -2,7 +2,7 @@ import React from 'react';
 
 export default function TestControls({ onShow, onReset, onRefresh, allAnswered }) {
   const handleShow = () => {
-    console.log('🔍 See Answer button clicked');
+    console.log('🔍 See All Answers button clicked');
     onShow();
   };
 
@@ -22,7 +22,7 @@ export default function TestControls({ onShow, onReset, onRefresh, allAnswered }
         onClick={handleShow} 
         className="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 dark:bg-yellow-600 dark:hover:bg-yellow-700 text-white rounded-lg transition-all duration-200 shadow-sm"
       >
-        👁️ See Answer
+        👁️ See All Answers
       </button>
       <button 
         onClick={handleReset} 

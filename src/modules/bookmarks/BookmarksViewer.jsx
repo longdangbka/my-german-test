@@ -20,6 +20,9 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
   const [answers, setAnswers] = useState({});
   const [feedback, setFeedback] = useState({});
   const [showFeedback, setShowFeedback] = useState(false);
+  
+  // Individual feedback state for per-question answer revealing
+  const [individualFeedback, setIndividualFeedback] = useState({});
 
   useEffect(() => {
     loadBookmarks();
@@ -638,6 +641,87 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
     setShowFeedback(true);
   };
 
+  // Handle individual question answer revealing
+  const handleShowIndividualAnswer = (questionId, hide = false) => {
+    console.log('🔍 Individual See Answer clicked for bookmark question:', questionId, hide ? '(hiding)' : '(showing)');
+    
+    if (hide) {
+      // Remove from individual feedback to hide answer
+      setIndividualFeedback(prev => {
+        const updated = { ...prev };
+        delete updated[questionId];
+        return updated;
+      });
+      return;
+    }
+    
+    // Find the bookmarked question to generate feedback for it
+    const question = bookmarks.find(q => q.id === questionId);
+    if (!question) {
+      console.warn('Bookmarked question not found:', questionId);
+      return;
+    }
+    
+    const newFeedback = {};
+    
+    if (question.type === 'CLOZE' && question.blanks) {
+      question.blanks.forEach((blank, bi) => {
+        const key = `${question.id}_${bi+1}`;
+        const userAnswer = answers[key] || '';
+        const isCorrect = userAnswer.trim().toLowerCase() === blank.trim().toLowerCase();
+        newFeedback[key] = isCorrect ? 'correct' : 'incorrect';
+        
+        console.log('🔍 Individual Bookmark Cloze Comparison Debug:', {
+          questionId: question.id,
+          blankIndex: bi,
+          key,
+          userAnswer: `"${userAnswer}"`,
+          correctAnswer: `"${blank}"`,
+          isCorrect
+        });
+      });
+    } else if (question.answer) {
+      const userAnswer = answers[question.id] || '';
+      let isCorrect = false;
+      
+      if (question.type === 'T-F') {
+        let userAnswerConverted = '';
+        if (userAnswer === 'R') userAnswerConverted = 'True';
+        else if (userAnswer === 'F') userAnswerConverted = 'False';
+        else userAnswerConverted = userAnswer;
+        
+        isCorrect = userAnswerConverted === question.answer;
+        
+        console.log('🔍 Individual Bookmark T-F Comparison Debug:', {
+          questionId: question.id,
+          userAnswer,
+          userAnswerConverted,
+          correctAnswer: question.answer,
+          isCorrect
+        });
+      } else if (question.type === 'Short') {
+        isCorrect = userAnswer.trim().toLowerCase() === (question.answer || '').trim().toLowerCase();
+        
+        console.log('🔍 Individual Bookmark Short Answer Comparison Debug:', {
+          questionId: question.id,
+          userAnswer: `"${userAnswer}"`,
+          userAnswerTrimmed: `"${userAnswer.trim().toLowerCase()}"`,
+          correctAnswer: `"${question.answer || ''}"`,
+          correctAnswerTrimmed: `"${(question.answer || '').trim().toLowerCase()}"`,
+          isCorrect
+        });
+      } else {
+        isCorrect = userAnswer.trim().toLowerCase() === (question.answer || '').trim().toLowerCase();
+      }
+      
+      newFeedback[question.id] = isCorrect ? 'correct' : 'incorrect';
+    }
+    
+    // Update both the main feedback and individual feedback
+    setFeedback(prev => ({ ...prev, ...newFeedback }));
+    setIndividualFeedback(prev => ({ ...prev, [questionId]: true }));
+  };
+
   const resetAnswers = () => {
     const reset = {};
     bookmarks.forEach(q => {
@@ -652,6 +736,7 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
     setAnswers(reset);
     setFeedback({});
     setShowFeedback(false);
+    setIndividualFeedback({});
   };
 
   const removeBookmark = async (questionId) => {
@@ -746,6 +831,8 @@ const BookmarksViewer = ({ onBack, theme, toggleTheme }) => {
               showFeedback={showFeedback}
               quizName="bookmarks"
               showAnkiButton={true}
+              individualFeedback={individualFeedback}
+              onShowIndividualAnswer={handleShowIndividualAnswer}
             />
             <TestControls
               onCheck={checkAnswers}

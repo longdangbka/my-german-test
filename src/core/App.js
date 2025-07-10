@@ -19,6 +19,9 @@ function App() {
   
   // Use an object to store showFeedback per section
   const [showFeedback, setShowFeedback] = useState({});
+  
+  // Individual feedback state for per-question answer revealing
+  const [individualFeedback, setIndividualFeedback] = useState({});
 
   // Initialize app and ensure all questions have IDs
   useEffect(() => {
@@ -55,12 +58,14 @@ function App() {
   const handleTestSelect = (filename) => {
     setSelectedTest(filename);
     setShowFeedback({}); // Reset feedback when switching tests
+    setIndividualFeedback({}); // Reset individual feedback when switching tests
   };
 
   const handleBackToTestSelection = () => {
     console.log('🔍 Back button clicked');
     setSelectedTest(null);
     setShowFeedback({});
+    setIndividualFeedback({});
   };
 
   // Check if the current test is bookmarks
@@ -79,6 +84,7 @@ function App() {
           console.log('Keyboard shortcut: Refreshing content...');
           qd.forceRefresh();
           setShowFeedback({});
+          setIndividualFeedback({});
         }
       }
     };
@@ -148,6 +154,87 @@ function App() {
     });
     qd.setFeedback(newFb);
     setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: true }));
+  };
+
+  // Handle individual question answer revealing
+  const handleShowIndividualAnswer = (questionId, hide = false) => {
+    console.log('🔍 Individual See Answer clicked for question:', questionId, hide ? '(hiding)' : '(showing)');
+    
+    if (hide) {
+      // Remove from individual feedback to hide answer
+      setIndividualFeedback(prev => {
+        const updated = { ...prev };
+        delete updated[questionId];
+        return updated;
+      });
+      return;
+    }
+    
+    // Find the question to generate feedback for it
+    const question = qd.currentGroup.questions.find(q => q.id === questionId);
+    if (!question) {
+      console.warn('Question not found:', questionId);
+      return;
+    }
+    
+    const newFeedback = {};
+    
+    if (question.type === 'CLOZE') {
+      question.blanks.forEach((blank, bi) => {
+        const key = `${question.id}_${bi+1}`;
+        const userAnswer = qd.answers[key] || '';
+        const isCorrect = userAnswer.trim().toLowerCase() === blank.trim().toLowerCase();
+        newFeedback[key] = isCorrect ? 'correct' : 'incorrect';
+        
+        console.log('🔍 Individual Cloze Comparison Debug:', {
+          questionId: question.id,
+          blankIndex: bi,
+          key,
+          userAnswer: `"${userAnswer}"`,
+          correctAnswer: `"${blank}"`,
+          isCorrect
+        });
+      });
+    } else {
+      const userAnswer = qd.answers[question.id] || '';
+      let isCorrect = false;
+      
+      if (question.type === 'T-F') {
+        let userAnswerConverted = '';
+        if (userAnswer === 'R') userAnswerConverted = 'True';
+        else if (userAnswer === 'F') userAnswerConverted = 'False';
+        else userAnswerConverted = userAnswer;
+        
+        isCorrect = userAnswerConverted === question.answer;
+        
+        console.log('🔍 Individual T-F Comparison Debug:', {
+          questionId: question.id,
+          userAnswer,
+          userAnswerConverted,
+          correctAnswer: question.answer,
+          isCorrect
+        });
+      } else if (question.type === 'Short') {
+        isCorrect = userAnswer.trim().toLowerCase() === (question.answer || '').trim().toLowerCase();
+        
+        console.log('🔍 Individual Short Answer Comparison Debug:', {
+          questionId: question.id,
+          userAnswer: `"${userAnswer}"`,
+          userAnswerTrimmed: `"${userAnswer.trim().toLowerCase()}"`,
+          correctAnswer: `"${question.answer || ''}"`,
+          correctAnswerTrimmed: `"${(question.answer || '').trim().toLowerCase()}"`,
+          isCorrect
+        });
+      } else {
+        isCorrect = userAnswer.trim().toLowerCase() === (question.answer || '').trim().toLowerCase();
+      }
+      
+      newFeedback[question.id] = isCorrect ? 'correct' : 'incorrect';
+    }
+    
+    // Update both the main feedback and individual feedback
+    qd.setFeedback(prev => ({ ...prev, ...newFeedback }));
+    setIndividualFeedback(prev => ({ ...prev, [questionId]: true }));
   };
 
   // Show answers without auto-filling user inputs
@@ -294,17 +381,21 @@ function App() {
           onChange={e => qd.setAnswers(a => ({ ...a, [e.target.name]: e.target.value }))}
           showFeedback={showCurrentFeedback}
           quizName={selectedTest}
+          individualFeedback={individualFeedback}
+          onShowIndividualAnswer={handleShowIndividualAnswer}
         />
       <TestControls
         onShow={doTestForMe}
         onReset={() => {
           qd.resetAll();
           setShowFeedback(fb => ({ ...fb, [qd.currentIndex]: false }));
+          setIndividualFeedback({});
         }}
         onRefresh={() => {
           console.log('Refreshing content...');
           qd.forceRefresh();
           setShowFeedback({}); // Clear all feedback
+          setIndividualFeedback({});
         }}
         allAnswered={allAnswered}
       />

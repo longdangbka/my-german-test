@@ -31,3 +31,14 @@ ausmachen = to turn off
 turn off = ausmachen
 
 --- end-question
+
+--- start-question
+TYPE: SHORT
+ID: qREFRESHTEST_1_short_ao3g6m
+
+Q: Who invented the famous equation $E = mc^2$ that relates energy?
+
+
+A: Einstein
+
+--- end-question

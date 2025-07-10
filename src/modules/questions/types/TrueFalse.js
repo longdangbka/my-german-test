@@ -196,7 +196,7 @@ export function Renderer({ q, value, feedback, onChange, showFeedback, seq, quiz
               )}
               {/* Show expected answer in gray background */}
               <span className="inline-block px-3 py-1 bg-gray-200 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded text-sm font-medium text-gray-800 dark:text-gray-200">
-                {q.answer === 'R' ? '✓ Richtig' : '✗ Falsch'}
+                {q.answer === 'True' ? '✓ Richtig' : '✗ Falsch'}
               </span>
             </div>
           ) : (
