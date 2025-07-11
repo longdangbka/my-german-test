@@ -72,15 +72,17 @@ export async function getAvailableTests(forceRefresh = false) {
         console.log('Vault files from IPC:', files);
         
         if (files && files.length > 0) {
-          // Files now come with metadata from Electron
+          // Files now come with metadata from Electron, including folder information
           availableTests = files.map(file => ({
             filename: file.filename,
             displayName: file.displayName || file.filename.replace('.md', ''),
+            folderPath: file.folderPath || '',
+            isInSubfolder: file.isInSubfolder || false,
             createdTime: new Date(file.createdTime),
             modifiedTime: new Date(file.modifiedTime),
             size: file.size
           }));
-          console.log('Successfully loaded', availableTests.length, 'quiz files from Electron with metadata');
+          console.log('Successfully loaded', availableTests.length, 'quiz files from Electron with metadata (including subfolders)');
           return availableTests;
         } else {
           console.warn('No vault files found via IPC');
@@ -107,9 +109,16 @@ export async function getAvailableTests(forceRefresh = false) {
           try {
             const res = await fetch(vaultPath + file, { method: 'HEAD' });
             if (res.ok) {
+              // Extract folder information from file path
+              const folderPath = file.includes('/') ? file.substring(0, file.lastIndexOf('/')) : '';
+              const isInSubfolder = folderPath !== '';
+              const displayName = file.substring(file.lastIndexOf('/') + 1).replace('.md', '');
+              
               availableTests.push({
                 filename: file,
-                displayName: file.replace('.md', ''),
+                displayName: displayName,
+                folderPath: folderPath,
+                isInSubfolder: isInSubfolder,
                 createdTime: new Date(), // Default for web fallback
                 modifiedTime: new Date(),
                 size: 0

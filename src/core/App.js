@@ -4,7 +4,7 @@ import AudioPlayer from '../modules/audio/AudioPlayer';
 import QuestionList from '../modules/questions/components/QuestionList';
 import TestControls from '../modules/testing/components/TestControls';
 import Navigation from '../modules/navigation/Navigation';
-import TestSelector from '../modules/testing/components/TestSelector';
+import TestSelectorWithFolders from '../modules/testing/components/TestSelectorWithFolders';
 import BookmarksViewer from '../modules/bookmarks/BookmarksViewer';
 import ThemeSelector from '../shared/components/ThemeSelector';
 import { useTheme } from '../shared/contexts/ThemeContext';
@@ -88,7 +88,7 @@ function App() {
   // If no test is selected, show the test selector
   if (!selectedTest) {
     return (
-      <TestSelector 
+      <TestSelectorWithFolders 
         onTestSelect={handleTestSelect}
       />
     );

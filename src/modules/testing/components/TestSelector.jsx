@@ -200,6 +200,25 @@ const TestSelector = ({ onTestSelect }) => {
           </p>
         </div>
 
+        {/* DEBUG: Folder Information */}
+        <div className="bg-blue-100 dark:bg-blue-900 p-4 rounded-lg mx-auto max-w-4xl mb-6">
+          <h3 className="text-blue-800 dark:text-blue-200 font-bold mb-2">🔍 DEBUG: Detected Files and Folders</h3>
+          <div className="text-sm text-blue-700 dark:text-blue-300">
+            <p><strong>Total Files:</strong> {availableTests.length}</p>
+            <p><strong>Files in Subfolders:</strong> {availableTests.filter(test => test.isInSubfolder).length}</p>
+            <div className="mt-2">
+              <strong>Folder Structure:</strong>
+              <ul className="list-disc list-inside mt-1">
+                {Array.from(new Set(availableTests.filter(test => test.isInSubfolder).map(test => test.folderPath)))
+                  .sort()
+                  .map(folderPath => (
+                    <li key={folderPath}>📁 {folderPath} ({availableTests.filter(test => test.folderPath === folderPath).length} files)</li>
+                  ))}
+              </ul>
+            </div>
+          </div>
+        </div>
+
         {/* Compact Utility Toolbar */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3 bg-white dark:bg-gray-800 px-4 py-3 rounded-lg shadow-md">
@@ -222,7 +241,11 @@ const TestSelector = ({ onTestSelect }) => {
             <div
               key={test.filename}
               className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer border border-gray-200 dark:border-gray-700 ${
-                test.isSpecial ? 'ring-2 ring-yellow-400' : ''
+                test.isSpecial 
+                  ? 'ring-2 ring-yellow-400' 
+                  : test.isInSubfolder 
+                    ? 'ring-1 ring-blue-300 dark:ring-blue-600 bg-gradient-to-br from-blue-50 to-transparent dark:from-blue-900/20' 
+                    : ''
               }`}
               onClick={() => handleTestSelect(test)}
             >
@@ -243,6 +266,11 @@ const TestSelector = ({ onTestSelect }) => {
                 {/* File metadata */}
                 {!test.isSpecial && (
                   <div className="text-xs text-gray-500 dark:text-gray-400 text-center mb-4 space-y-1">
+                    {test.isInSubfolder && (
+                      <div className="text-blue-600 dark:text-blue-400 font-medium">
+                        📁 {test.folderPath}
+                      </div>
+                    )}
                     <div>Created: {formatDate(test.createdTime)}</div>
                     <div>Modified: {formatDate(test.modifiedTime)}</div>
                     <div>Size: {formatFileSize(test.size)}</div>

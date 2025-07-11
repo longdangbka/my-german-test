@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
   readVaultFile: (filename, timestamp) => ipcRenderer.invoke('vault:read-file', filename, timestamp),
   readVaultImage: (filename) => ipcRenderer.invoke('vault:read-image', filename),
   listVaultFiles: () => ipcRenderer.invoke('vault:list-files'),
+  getFolderStructure: () => ipcRenderer.invoke('vault:get-folder-structure'),
   writeVaultFile: (filename, content) => ipcRenderer.invoke('vault:write-file', filename, content),
   
   // Vault folder management

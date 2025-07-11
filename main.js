@@ -142,15 +142,50 @@ function registerIpcHandlers() {
     }
   });
 
-  // Handle vault image requests - return as base64 data URL
+  // Helper function to find a file recursively in the vault
+  function findFileInVault(filename, vaultPath) {
+    function searchDirectory(dir) {
+      try {
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          
+          if (entry.isFile() && entry.name === filename) {
+            return fullPath;
+          } else if (entry.isDirectory()) {
+            const found = searchDirectory(fullPath);
+            if (found) return found;
+          }
+        }
+      } catch (error) {
+        console.error(`Error searching directory ${dir}:`, error);
+      }
+      return null;
+    }
+    
+    return searchDirectory(vaultPath);
+  }
+
+  // Handle vault image requests - return as base64 data URL (now supports recursive search)
   ipcMain.handle('vault:read-image', async (event, filename) => {
     try {
       const vaultPath = getVaultPath();
-      const filePath = path.join(vaultPath, filename);
+      
+      // First try the direct path for better performance
+      let filePath = path.join(vaultPath, filename);
       
       if (!fs.existsSync(filePath)) {
-        console.error(`Image not found: ${filename} at ${filePath}`);
-        return null;
+        console.log(`File not found at direct path: ${filePath}, searching recursively...`);
+        // If not found directly, search recursively
+        filePath = findFileInVault(filename, vaultPath);
+        
+        if (!filePath) {
+          console.error(`File not found anywhere in vault: ${filename}`);
+          return null;
+        }
+        
+        console.log(`Found file at: ${filePath}`);
       }
       
       const imageBuffer = fs.readFileSync(filePath);
@@ -200,46 +235,72 @@ function registerIpcHandlers() {
     }
   });
 
-  // Handle vault file listing with metadata
+  // Helper function to recursively find all .md files in a directory
+  function findMarkdownFilesRecursively(dir, baseDir = dir) {
+    let markdownFiles = [];
+    
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isDirectory()) {
+          // Recursively search subdirectories
+          markdownFiles = markdownFiles.concat(findMarkdownFilesRecursively(fullPath, baseDir));
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          // Calculate relative path from vault root
+          const relativePath = path.relative(baseDir, fullPath);
+          const folderPath = path.dirname(relativePath);
+          const isInSubfolder = folderPath !== '.';
+          
+          try {
+            const stats = fs.statSync(fullPath);
+            markdownFiles.push({
+              filename: relativePath.replace(/\\/g, '/'), // Normalize path separators for cross-platform compatibility
+              displayName: entry.name.replace('.md', ''),
+              folderPath: isInSubfolder ? folderPath.replace(/\\/g, '/') : '',
+              isInSubfolder,
+              createdTime: stats.birthtime || stats.ctime,
+              modifiedTime: stats.mtime,
+              size: stats.size
+            });
+          } catch (error) {
+            console.error(`Error getting stats for file ${fullPath}:`, error);
+            markdownFiles.push({
+              filename: relativePath.replace(/\\/g, '/'),
+              displayName: entry.name.replace('.md', ''),
+              folderPath: isInSubfolder ? folderPath.replace(/\\/g, '/') : '',
+              isInSubfolder,
+              createdTime: new Date(),
+              modifiedTime: new Date(),
+              size: 0
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.error(`Error reading directory ${dir}:`, error);
+    }
+    
+    return markdownFiles;
+  }
+
+  // Handle vault file listing with metadata (now supports recursive search)
   ipcMain.handle('vault:list-files', async () => {
     try {
       const vaultPath = getVaultPath();
       
-      console.log('Listing vault files from:', vaultPath);
+      console.log('Listing vault files recursively from:', vaultPath);
       
       if (!fs.existsSync(vaultPath)) {
         console.error('Could not find vault directory in any location');
         return [];
       }
       
-      const files = fs.readdirSync(vaultPath);
-      const mdFiles = files.filter(file => file.endsWith('.md'));
+      const filesWithMetadata = findMarkdownFilesRecursively(vaultPath);
       
-      // Get file stats for each file
-      const filesWithMetadata = mdFiles.map(file => {
-        try {
-          const filePath = path.join(vaultPath, file);
-          const stats = fs.statSync(filePath);
-          return {
-            filename: file,
-            displayName: file.replace('.md', ''),
-            createdTime: stats.birthtime || stats.ctime, // Use birthtime if available, fallback to ctime
-            modifiedTime: stats.mtime,
-            size: stats.size
-          };
-        } catch (error) {
-          console.error(`Error getting stats for file ${file}:`, error);
-          return {
-            filename: file,
-            displayName: file.replace('.md', ''),
-            createdTime: new Date(),
-            modifiedTime: new Date(),
-            size: 0
-          };
-        }
-      });
-      
-      console.log('Found vault files with metadata:', filesWithMetadata);
+      console.log(`Found ${filesWithMetadata.length} markdown files (including subfolders):`, filesWithMetadata);
       return filesWithMetadata;
     } catch (error) {
       console.error('Error listing vault files:', error);
@@ -347,6 +408,141 @@ function registerIpcHandlers() {
     } catch (error) {
       console.error('Error resetting vault path:', error);
       return { success: false, error: error.message };
+    }
+  });
+
+  // Helper function to build hierarchical folder structure
+  function buildFolderStructure(vaultPath) {
+    const structure = {
+      files: [],
+      folders: new Map()
+    };
+    
+    function processDirectory(dir, currentPath = '') {
+      try {
+        const items = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const item of items) {
+          const itemPath = path.join(dir, item.name);
+          const relativePath = currentPath ? path.join(currentPath, item.name) : item.name;
+          
+          if (item.isDirectory()) {
+            // This is a folder - recursively process it
+            const folderStructure = {
+              name: item.name,
+              path: relativePath,
+              files: [],
+              folders: new Map()
+            };
+            
+            // Get folder contents
+            processDirectoryIntoStructure(itemPath, folderStructure, relativePath);
+            
+            // Add to current level's folders
+            if (currentPath === '') {
+              structure.folders.set(item.name, folderStructure);
+            }
+            
+          } else if (item.name.endsWith('.md')) {
+            // This is a markdown file
+            const stats = fs.statSync(itemPath);
+            const fileInfo = {
+              filename: relativePath.replace(/\\/g, '/'), // Normalize path separators
+              displayName: item.name.replace('.md', ''),
+              folderPath: currentPath.replace(/\\/g, '/'),
+              isInSubfolder: currentPath !== '',
+              createdTime: stats.birthtime,
+              modifiedTime: stats.mtime,
+              size: stats.size
+            };
+            
+            if (currentPath === '') {
+              structure.files.push(fileInfo);
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error reading directory ${dir}:`, error);
+      }
+    }
+    
+    function processDirectoryIntoStructure(dir, folderObj, basePath) {
+      try {
+        const items = fs.readdirSync(dir, { withFileTypes: true });
+        
+        for (const item of items) {
+          const itemPath = path.join(dir, item.name);
+          const relativePath = path.join(basePath, item.name);
+          
+          if (item.isDirectory()) {
+            // Nested folder
+            const nestedFolder = {
+              name: item.name,
+              path: relativePath.replace(/\\/g, '/'),
+              files: [],
+              folders: new Map()
+            };
+            
+            processDirectoryIntoStructure(itemPath, nestedFolder, relativePath);
+            folderObj.folders.set(item.name, nestedFolder);
+            
+          } else if (item.name.endsWith('.md')) {
+            // File in this folder
+            const stats = fs.statSync(itemPath);
+            const fileInfo = {
+              filename: relativePath.replace(/\\/g, '/'),
+              displayName: item.name.replace('.md', ''),
+              folderPath: basePath.replace(/\\/g, '/'),
+              isInSubfolder: true,
+              createdTime: stats.birthtime,
+              modifiedTime: stats.mtime,
+              size: stats.size
+            };
+            
+            folderObj.files.push(fileInfo);
+          }
+        }
+      } catch (error) {
+        console.error(`Error reading directory ${dir}:`, error);
+      }
+    }
+    
+    processDirectory(vaultPath);
+    
+    // Convert Maps to plain objects for JSON serialization
+    function convertMapsToObjects(obj) {
+      if (obj.folders && obj.folders instanceof Map) {
+        const foldersObj = {};
+        for (const [key, value] of obj.folders.entries()) {
+          foldersObj[key] = convertMapsToObjects(value);
+        }
+        obj.folders = foldersObj;
+      }
+      return obj;
+    }
+    
+    return convertMapsToObjects(structure);
+  }
+
+  // Handle vault folder structure
+  ipcMain.handle('vault:get-folder-structure', async () => {
+    try {
+      const vaultPath = getVaultPath();
+      
+      console.log('Getting vault folder structure from:', vaultPath);
+      
+      if (!fs.existsSync(vaultPath)) {
+        console.error('Could not find vault directory in any location');
+        return { files: [], folders: {} };
+      }
+      
+      const folderStructure = buildFolderStructure(vaultPath);
+      
+      console.log('Built folder structure:', JSON.stringify(folderStructure, null, 2));
+      return folderStructure;
+    } catch (error) {
+      console.error('Error getting vault folder structure:', error);
+      return { files: [], folders: {} };
     }
   });
 }

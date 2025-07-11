@@ -4,7 +4,7 @@ import AudioPlayer from '../features/audio/AudioPlayer';
 import QuestionList from '../features/questions/components/QuestionList';
 import TestControls from '../features/testing/components/TestControls';
 import Navigation from '../features/navigation/Navigation';
-import TestSelector from '../features/testing/components/TestSelector';
+import TestSelectorWithFolders from '../features/testing/components/TestSelectorWithFolders';
 import BookmarksViewer from '../features/bookmarks/BookmarksViewer';
 import ThemeSelector from '../shared/components/ThemeSelector';
 import { renderSimpleLatex } from '../shared/utils/simpleLatexRenderer';
@@ -60,7 +60,7 @@ function App() {
   // If no test is selected, show the test selector
   if (!selectedTest) {
     return (
-      <TestSelector 
+      <TestSelectorWithFolders 
         onTestSelect={handleTestSelect}
       />
     );
