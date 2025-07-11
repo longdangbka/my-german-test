@@ -9,7 +9,6 @@ const TestSelectorWithFolders = ({ onTestSelect }) => {
   const [sortOrder, setSortOrder] = useState('asc');
 
   const handleTestSelect = (test) => {
-    console.log('TestSelectorWithFolders: Selected test', test);
     onTestSelect(test.filename);
   };
 
