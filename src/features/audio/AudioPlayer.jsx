@@ -130,29 +130,37 @@ export default function AudioPlayer({ group }) {
 
   if (!src) {
     return (
-      <div>
-        <p>No audio found for this task.</p>
-        <div className="upload-wrapper">
-          <label htmlFor={`upload-${group.title}`} className="btn">
-            Upload Audio
-          </label>
-          <input
-            id={`upload-${group.title}`}
-            type="file"
-            accept="audio/*"
-            onChange={handleUpload}
-          />
+      <div className="audio-contrast p-3 border rounded sticky top-0 z-50">
+        <div className="mb-3 text-center text-gray-600 dark:text-gray-400">
+          📷 No audio available for this task
         </div>
+        
+        {/* Upload Audio Button */}
+        <div className="flex justify-center mb-3">
+          <div className="upload-wrapper">
+            <label htmlFor={`upload-${group.title}`} className="audio-btn-upload">
+              📁 Upload Audio
+            </label>
+            <input
+              id={`upload-${group.title}`}
+              type="file"
+              accept="audio/*"
+              onChange={handleUpload}
+            />
+          </div>
+        </div>
+        
+        {/* Transcript Section */}
         {group.transcript && (
-          <div className="mt-4">
+          <div>
             <button
-              className="mb-3 px-4 py-2 rounded-lg border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
+              className="audio-btn-transcript w-full mb-2"
               onClick={() => setShowTranscript((v) => !v)}
             >
               {showTranscript ? '📄 Hide Transcript' : '📄 Show Transcript'}
             </button>
             {showTranscript && (
-              <div className="p-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-600 text-sm whitespace-pre-line shadow-sm">
+              <div className="p-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-600 text-sm whitespace-pre-line shadow-sm">
                 <strong className="text-gray-900 dark:text-gray-100">Transcript:</strong>
                 <div className="mt-2">{group.transcript}</div>
               </div>
@@ -164,78 +172,99 @@ export default function AudioPlayer({ group }) {
   }
 
   return (
-    <div className="audio-contrast p-3 border rounded space-y-2 sticky top-0 z-50">
+    <div className="audio-contrast p-3 border rounded sticky top-0 z-50">
+      {/* Audio Player */}
       <audio
         ref={audioRef}
         controls
         src={src}
         style={{ width: '100%' }}
         onError={handleAudioError}
+        className="mb-3"
       />
-      <div className="my-2 flex gap-2 items-center">
-        <button
-          type="button"
-          className="px-3 py-1.5 rounded-lg border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
-          onClick={() => {
-            if (audioRef.current) {
-              audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
-            }
-          }}
-        >
-          ⏪ 1.5s
-        </button>
-        {speedOptions.map((rate) => (
+      
+      {/* Compact Control Layout */}
+      <div className="flex flex-wrap gap-2 items-center justify-between mb-2">
+        {/* Navigation Controls */}
+        <div className="flex gap-1 items-center">
           <button
-            key={rate}
-            onClick={() => setPlaybackRate(rate)}
-            className={`px-3 py-1.5 rounded-lg border transition-all duration-200 ${
-              playbackRate === rate
-                ? 'bg-blue-500 dark:bg-blue-600 text-white border-blue-500 dark:border-blue-600'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
+            type="button"
+            className="audio-btn-control"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
+              }
+            }}
+            title="Go back 1.5 seconds"
           >
-            {rate}x
+            ⏪ 1.5s
           </button>
-        ))}
-        <button
-          type="button"
-          className="px-3 py-1.5 rounded-lg border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
-          onClick={() => {
-            if (audioRef.current) {
-              audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
-            }
-          }}
-        >
-          1.5s ⏩
-        </button>
-      </div>
-      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
-        Keyboard shortcuts: <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">J</kbd> pause/play, 
-        <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded ml-1">H</kbd> back 1.5s, 
-        <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded ml-1">K</kbd> forward 1.5s
-      </div>
-      <div className="upload-wrapper">
-        <label htmlFor={`upload-${group.title}`} className="btn">
-          Change Audio
-        </label>
-        <input
-          id={`upload-${group.title}`}
-          type="file"
-          accept="audio/*"
-          onChange={handleUpload}
-        />
-      </div>
-      {group.transcript && (
-        <div className="mt-4">
           <button
-            className="mb-3 px-4 py-2 rounded-lg border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
+            type="button"
+            className="audio-btn-control"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
+              }
+            }}
+            title="Go forward 1.5 seconds"
+          >
+            1.5s ⏩
+          </button>
+        </div>
+
+        {/* Speed Controls */}
+        <div className="flex gap-1 items-center">
+          {speedOptions.map((rate) => (
+            <button
+              key={rate}
+              onClick={() => setPlaybackRate(rate)}
+              className={`audio-btn-speed ${
+                playbackRate === rate
+                  ? 'audio-btn-speed-active'
+                  : 'audio-btn-speed-inactive'
+              }`}
+              title={`Set playback speed to ${rate}x`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
+
+        {/* Change Audio Button */}
+        <div className="upload-wrapper">
+          <label htmlFor={`upload-${group.title}`} className="audio-btn-upload">
+            📁 Change Audio
+          </label>
+          <input
+            id={`upload-${group.title}`}
+            type="file"
+            accept="audio/*"
+            onChange={handleUpload}
+          />
+        </div>
+      </div>
+      
+      {/* Keyboard Shortcuts - Compact Display */}
+      <div className="text-xs text-gray-600 dark:text-gray-400 mb-2 flex flex-wrap gap-1 items-center">
+        <span>Shortcuts:</span>
+        <kbd className="kbd">J</kbd><span className="text-gray-500">play/pause</span>
+        <kbd className="kbd">H</kbd><span className="text-gray-500">back</span>
+        <kbd className="kbd">K</kbd><span className="text-gray-500">forward</span>
+      </div>
+      
+      {/* Transcript Section */}
+      {group.transcript && (
+        <div>
+          <button
+            className="audio-btn-transcript w-full"
             onClick={() => setShowTranscript((v) => !v)}
           >
             {showTranscript ? '📄 Hide Transcript' : '📄 Show Transcript'}
           </button>
           {showTranscript && (
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-600 text-sm whitespace-pre-line shadow-sm">
-              <div className="mt-2">{group.transcript}</div>
+            <div className="mt-2 p-3 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-lg border border-gray-200 dark:border-gray-600 text-sm whitespace-pre-line shadow-sm">
+              <div>{group.transcript}</div>
             </div>
           )}
         </div>

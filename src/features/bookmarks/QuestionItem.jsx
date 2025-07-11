@@ -86,49 +86,53 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
         Your browser does not support the audio element.
       </audio>
       
-      {/* Control buttons for skip and speed */}
-      <div className="flex gap-2 items-center flex-wrap">
-        <button
-          type="button"
-          className="px-2 py-1 text-xs rounded border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
-          onClick={() => {
-            if (audioRef.current) {
-              audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
-            }
-          }}
-          title="Go back 1.5 seconds"
-        >
-          ⏪ 1.5s
-        </button>
-        
-        {/* Speed control buttons */}
-        {speedOptions.map((rate) => (
+      {/* Control buttons for skip and speed - Updated to match main AudioPlayer */}
+      <div className="flex flex-wrap gap-1 items-center justify-between">
+        {/* Navigation Controls */}
+        <div className="flex gap-1 items-center">
           <button
-            key={rate}
-            onClick={() => setPlaybackRate(rate)}
-            className={`px-2 py-1 text-xs rounded border transition-all duration-200 ${
-              playbackRate === rate
-                ? 'bg-blue-500 dark:bg-blue-600 text-white border-blue-500 dark:border-blue-600'
-                : 'bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600'
-            }`}
-            title={`Set playback speed to ${rate}x`}
+            type="button"
+            className="audio-btn-control"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
+              }
+            }}
+            title="Go back 1.5 seconds"
           >
-            {rate}x
+            ⏪ 1.5s
           </button>
-        ))}
-        
-        <button
-          type="button"
-          className="px-2 py-1 text-xs rounded border bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-300 dark:hover:bg-gray-600 transition-all duration-200"
-          onClick={() => {
-            if (audioRef.current) {
-              audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
-            }
-          }}
-          title="Go forward 1.5 seconds"
-        >
-          1.5s ⏩
-        </button>
+          <button
+            type="button"
+            className="audio-btn-control"
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
+              }
+            }}
+            title="Go forward 1.5 seconds"
+          >
+            1.5s ⏩
+          </button>
+        </div>
+
+        {/* Speed Controls */}
+        <div className="flex gap-1 items-center">
+          {speedOptions.map((rate) => (
+            <button
+              key={rate}
+              onClick={() => setPlaybackRate(rate)}
+              className={`audio-btn-speed ${
+                playbackRate === rate
+                  ? 'audio-btn-speed-active'
+                  : 'audio-btn-speed-inactive'
+              }`}
+              title={`Set playback speed to ${rate}x`}
+            >
+              {rate}x
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   );

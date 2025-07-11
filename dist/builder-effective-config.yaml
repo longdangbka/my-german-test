@@ -1,0 +1,53 @@
+directories:
+  output: dist
+  buildResources: assets
+appId: com.example.my-german-test
+productName: My German Test
+copyright: Copyright © 2025 My German Test
+extends: null
+compression: normal
+removePackageKeywords: true
+asar: true
+asarUnpack:
+  - '**/node_modules/sharp/**/*'
+  - '**/node_modules/fsevents/**/*'
+files:
+  - filter:
+      - build/static/css/*.css
+      - build/static/js/*.js
+      - build/static/media/**/*
+      - build/index.html
+      - build/manifest.json
+      - build/favicon.ico
+      - main.js
+      - preload.js
+      - package.json
+extraResources:
+  - from: public/audios
+    to: audios
+  - from: public/vault
+    to: vault
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+    - target: portable
+      arch:
+        - x64
+  requestedExecutionLevel: asInvoker
+  forceCodeSigning: false
+  verifyUpdateCodeSignature: false
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: My German Test
+portable:
+  artifactName: MyGermanTest-Portable-${version}.${ext}
+mac:
+  target: dmg
+linux:
+  target: AppImage
+electronVersion: 37.2.0

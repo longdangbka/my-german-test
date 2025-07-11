@@ -222,7 +222,7 @@ function registerIpcHandlers() {
           const stats = fs.statSync(filePath);
           return {
             filename: file,
-            displayName: file.replace('.md', '').replace(/-/g, ' '),
+            displayName: file.replace('.md', ''),
             createdTime: stats.birthtime || stats.ctime, // Use birthtime if available, fallback to ctime
             modifiedTime: stats.mtime,
             size: stats.size
@@ -231,7 +231,7 @@ function registerIpcHandlers() {
           console.error(`Error getting stats for file ${file}:`, error);
           return {
             filename: file,
-            displayName: file.replace('.md', '').replace(/-/g, ' '),
+            displayName: file.replace('.md', ''),
             createdTime: new Date(),
             modifiedTime: new Date(),
             size: 0

@@ -380,6 +380,20 @@ function App() {
         isFirst={qd.currentIndex === 0}
         isLast={qd.currentIndex === qd.groups.length - 1}
       />
+      
+      {/* Bottom Back to Quiz Selection Button */}
+      <div className="flex justify-start mt-8 pt-6 border-t border-gray-200 dark:border-gray-600">
+        <button
+          onClick={handleBackToTestSelection}
+          className="flex items-center px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+          title="Return to quiz selection"
+        >
+          <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back to Quiz Selection
+        </button>
+      </div>
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ export async function getAvailableTests(forceRefresh = false) {
           // Files now come with metadata from Electron
           availableTests = files.map(file => ({
             filename: file.filename,
-            displayName: file.displayName || file.filename.replace('.md', '').replace(/-/g, ' '),
+            displayName: file.displayName || file.filename.replace('.md', ''),
             createdTime: new Date(file.createdTime),
             modifiedTime: new Date(file.modifiedTime),
             size: file.size
@@ -109,7 +109,7 @@ export async function getAvailableTests(forceRefresh = false) {
             if (res.ok) {
               availableTests.push({
                 filename: file,
-                displayName: file.replace('.md', '').replace(/-/g, ' '),
+                displayName: file.replace('.md', ''),
                 createdTime: new Date(), // Default for web fallback
                 modifiedTime: new Date(),
                 size: 0
