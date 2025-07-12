@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { ClozeBlank as CoreClozeBlank } from '../../cloze';
+import { ClozeBlank as CoreClozeBlank } from '../../cloze/clozeModule';
 
 /**
  * React wrapper for the core ClozeBlank component from cloze.js

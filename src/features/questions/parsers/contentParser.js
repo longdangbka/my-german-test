@@ -1,7 +1,7 @@
 // contentParser.js
 // Centralized content parsing with normalized AST output
 
-import { validateClozeText, toSequentialBlanks } from '../../cloze';
+import { validateClozeText, toSequentialBlanks } from '../../cloze/clozeModule';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 

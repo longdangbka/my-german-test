@@ -11,7 +11,7 @@ import {
   stripMarkers, 
   findCloze, 
   ClozeBlank 
-} from '../../cloze';
+} from '../../cloze/clozeModule';
 
 /**
  * Component to render inline cloze text with input fields or feedback.

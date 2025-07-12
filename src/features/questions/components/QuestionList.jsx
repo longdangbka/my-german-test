@@ -1,5 +1,5 @@
 import React from 'react';
-import { questionTypes } from '../types';
+import { questionTypes } from '../types/questionTypes';
 
 export default function QuestionList({ 
   questions, 

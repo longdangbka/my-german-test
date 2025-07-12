@@ -1,5 +1,5 @@
 import * as TrueFalse from './TrueFalse';
-import * as Cloze from './Cloze';
+import * as Cloze from './ClozeQuestionType';
 import * as ShortAnswer from './ShortAnswer';
 import '../../../assets/styles/question-block.css';
 

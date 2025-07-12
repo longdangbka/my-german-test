@@ -2,7 +2,7 @@ import React from 'react';
 import '../../../assets/styles/answer-contrast.css';
 import VaultImage from '../../../shared/components/VaultImage.jsx';
 import BookmarkButton from '../../bookmarks/BookmarkButton.jsx';
-import { AnkiButton } from '../../anki';
+import { AnkiButton } from '../../anki/ankiModule';
 import CodeBlock from '../components/CodeBlock';
 import TableWithLatex from '../components/TableWithLatex';
 import QuestionIdDisplay from '../../../shared/components/QuestionIdDisplay.jsx';

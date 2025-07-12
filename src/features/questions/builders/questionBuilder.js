@@ -8,7 +8,7 @@ import {
   ensureClozeQuestion,
   processClozeElements,
   hasCloze
-} from '../../cloze';
+} from '../../cloze/clozeModule';
 
 const DEBUG = process.env.NODE_ENV === 'development';
 

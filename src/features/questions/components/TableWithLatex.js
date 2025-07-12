@@ -1,6 +1,6 @@
 import React from 'react';
 import { InlineMath, BlockMath } from 'react-katex';
-import { parseClozeMarkers } from '../../../shared/constants/index.js';
+import { parseClozeMarkers } from '../../../shared/constants/constantExports.js';
 
 export default function TableWithLatex({ htmlTable, question = null, value = {}, onChange = null, showFeedback = false, feedback = {}, startingBlankIndex = 0 }) {
   // Force component to re-mount when question changes to prevent caching issues

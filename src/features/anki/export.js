@@ -7,7 +7,7 @@ import { NOTE_TYPE_MAPPING, FIELD_MAPPING, ANKI_CONFIG, DEBUG_CONFIG } from './c
 import { getNoteTypes, getNoteTypeFields, addNote } from './network.js';
 import { extractMedia, processMediaFiles, replaceMediaReferences } from './media.js';
 import { processStructuredContent, processRegexContent } from './convert.js';
-import { fixClozeNumbering, hasClozes, questionHasClozes } from './cloze.js';
+import { fixClozeNumbering, hasClozes, questionHasClozes } from './ankiClozeHandler.js';
 
 /**
  * Map question type to Anki note type

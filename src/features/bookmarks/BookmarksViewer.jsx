@@ -12,7 +12,7 @@ import {
   extractAllClozeBlanks,
   toSequentialBlanks,
   processClozeElements
-} from '../cloze';
+} from '../cloze/clozeModule';
 
 const BookmarksViewer = ({ onBack }) => {
   const [bookmarks, setBookmarks] = useState([]);
