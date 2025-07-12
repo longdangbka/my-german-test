@@ -29,7 +29,7 @@ Machen Sie bitte während der Führung Handys und Smartphones aus oder stellen S
 
 --- start-question
 TYPE: T-F
-ID: qSECONDSECTION2TEST_1_t-f_sxepvo
+ID: qSECOND SECTION 2 TEST_1_t-f_ig9n0l
 
 Q: 
 
@@ -49,7 +49,7 @@ E: "Die Führung ist auf Deutsch und Englisch."
 
 --- start-question
 TYPE: Cloze
-ID: qSECONDSECTION2TEST_2_cloze_nb661i
+ID: qSECOND SECTION 2 TEST_2_cloze_lfhxm3
 
 Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 

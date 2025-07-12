@@ -1,54 +1,107 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import QuestionList from '../questions/components/QuestionList';
 import { getVaultAudioSrc } from '../../shared/utils/testUtils';
+import WavesurferComponent from '../audio/WavesurferComponent';
 
-// Enhanced audio player component for bookmarked questions with full controls
-const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile }) {
-  const [audioSrc, setAudioSrc] = useState(null);
+// Optimized BookmarkAudioPlayer for bookmarked questions
+const BookmarkAudioPlayer = memo(function BookmarkAudioPlayer({ audioFile }) {
+  const [src, setSrc] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [playbackRate, setPlaybackRate] = useState(1);
-  const audioRef = useRef();
+  const [rate, setRate] = useState(1);
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+  const wsRef = useRef(null);
 
+  // Lean audio loading with active flag
   useEffect(() => {
-    const loadAudio = async () => {
-      if (!audioFile) {
-        setLoading(false);
-        return;
-      }
-      
+    let active = true;
+    
+    if (!audioFile) {
+      setLoading(false);
+      return;
+    }
+
+    (async () => {
+      setReady(false);
       try {
-        console.log('🔊 BOOKMARK AUDIO - Loading audio:', audioFile);
-        const src = await getVaultAudioSrc(audioFile);
-        if (src) {
-          setAudioSrc(src);
-          console.log('🔊 BOOKMARK AUDIO - Successfully loaded audio');
-        } else {
-          console.warn('🔊 BOOKMARK AUDIO - Failed to load audio:', audioFile);
+        console.log('🔊 Loading audio:', audioFile);
+        const url = await getVaultAudioSrc(audioFile);
+        if (active) {
+          setSrc(url || '');
+          console.log('🔊 Audio loaded:', url ? 'success' : 'failed');
         }
       } catch (error) {
-        console.error('🔊 BOOKMARK AUDIO - Error loading audio:', error);
+        console.error('🔊 Audio load error:', error);
+        if (active) setSrc('');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
-    };
+    })();
 
-    loadAudio();
+    return () => { active = false; };
   }, [audioFile]);
 
-  // Update playback rate on audio element
+  // Sync playback rate when ready
   useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = playbackRate;
+    if (ready && wsRef.current) {
+      wsRef.current.setPlaybackRate(rate);
     }
-  }, [playbackRate]);
+  }, [rate, ready]);
 
-  const speedOptions = [1, 0.8, 0.6, 0.4, 0.3];
+  // Memoized WaveSurfer callbacks
+  const onReady = useCallback(() => {
+    console.log('🎵 BookmarkAudioPlayer ready');
+    setReady(true);
+  }, []);
 
-  if (!audioFile || loading) {
-    return null;
-  }
+  const onPlay = useCallback(() => setPlaying(true), []);
+  const onPause = useCallback(() => setPlaying(false), []);
+  const onFinish = useCallback(() => setPlaying(false), []);
 
-  if (!audioSrc) {
+  // Encapsulated control functions
+  const togglePlay = () => {
+    const ws = wsRef.current;
+    if (ws && ready) {
+      console.log('🎵 Toggle play/pause');
+      ws.playPause();
+    }
+  };
+
+  const changeRate = (newRate) => {
+    const ws = wsRef.current;
+    if (!ws || !ready) return;
+    
+    console.log('🎵 Changing rate to:', newRate);
+    const wasPlaying = ws.isPlaying();
+    ws.setPlaybackRate(newRate);
+    setRate(newRate);
+    
+    // Resume playback if it was playing before rate change
+    if (wasPlaying) {
+      setTimeout(() => ws.play(), 10);
+    }
+  };
+
+  const skipBackward = () => {
+    const ws = wsRef.current;
+    if (ws && ready) {
+      console.log('⏪ Skip backward');
+      ws.skipBackward(1.5);
+    }
+  };
+
+  const skipForward = () => {
+    const ws = wsRef.current;
+    if (ws && ready) {
+      console.log('⏩ Skip forward');
+      ws.skipForward(1.5);
+    }
+  };
+
+  // Early returns for loading and unavailable states
+  if (loading || !audioFile) return null;
+  
+  if (!src) {
     return (
       <div className="mb-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-md">
         <span className="text-sm text-yellow-800 dark:text-yellow-200">
@@ -58,10 +111,7 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
     );
   }
 
-  // Handle audio loading errors
-  const handleAudioError = () => {
-    console.error('🔊 BOOKMARK AUDIO - Failed to load:', audioFile);
-  };
+  const speedOptions = [1, 0.8, 0.6, 0.4, 0.3];
 
   return (
     <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
@@ -71,33 +121,43 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
         </span>
       </div>
       
-      {/* Audio element with full controls */}
-      <audio 
-        ref={audioRef}
-        controls 
-        className="w-full mb-2"
-        onError={handleAudioError}
-        preload="metadata"
-      >
-        <source src={audioSrc} type="audio/mpeg" />
-        <source src={audioSrc} type="audio/wav" />
-        <source src={audioSrc} type="audio/mp4" />
-        <source src={audioSrc} type="audio/ogg" />
-        Your browser does not support the audio element.
-      </audio>
+      {/* WaveSurfer Player */}
+      <div className="mb-3">
+        <WavesurferComponent
+          ref={wsRef}
+          audioUrl={src}
+          onReady={onReady}
+          onPlay={onPlay}
+          onPause={onPause}
+          onFinish={onFinish}
+          waveColor="#60A5FA"
+          progressColor="#2563EB"
+          cursorColor="#DC2626"
+          height={80}
+        />
+      </div>
+
+      {/* Play/Pause Button */}
+      <div className="flex justify-center mb-2">
+        <button
+          type="button"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={togglePlay}
+          disabled={!ready}
+        >
+          {playing ? '⏸️ Pause' : '▶️ Play'}
+        </button>
+      </div>
       
-      {/* Control buttons for skip and speed - Updated to match main AudioPlayer */}
+      {/* Streamlined control layout */}
       <div className="flex flex-wrap gap-1 items-center justify-between">
         {/* Navigation Controls */}
         <div className="flex gap-1 items-center">
           <button
             type="button"
             className="audio-btn-control"
-            onClick={() => {
-              if (audioRef.current) {
-                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 1.5);
-              }
-            }}
+            onClick={skipBackward}
+            disabled={!ready}
             title="Go back 1.5 seconds"
           >
             ⏪ 1.5s
@@ -105,11 +165,8 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
           <button
             type="button"
             className="audio-btn-control"
-            onClick={() => {
-              if (audioRef.current) {
-                audioRef.current.currentTime = Math.min(audioRef.current.duration || Infinity, audioRef.current.currentTime + 1.5);
-              }
-            }}
+            onClick={skipForward}
+            disabled={!ready}
             title="Go forward 1.5 seconds"
           >
             1.5s ⏩
@@ -118,18 +175,19 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
 
         {/* Speed Controls */}
         <div className="flex gap-1 items-center">
-          {speedOptions.map((rate) => (
+          {speedOptions.map((speed) => (
             <button
-              key={rate}
-              onClick={() => setPlaybackRate(rate)}
+              key={speed}
+              onClick={() => changeRate(speed)}
+              disabled={!ready}
               className={`audio-btn-speed ${
-                playbackRate === rate
+                rate === speed
                   ? 'audio-btn-speed-active'
                   : 'audio-btn-speed-inactive'
-              }`}
-              title={`Set playback speed to ${rate}x`}
+              } ${!ready ? 'opacity-50 cursor-not-allowed' : ''}`}
+              title={`Set playback speed to ${speed}x`}
             >
-              {rate}x
+              {speed}x
             </button>
           ))}
         </div>
@@ -138,7 +196,8 @@ const BookmarkAudioPlayer = React.memo(function BookmarkAudioPlayer({ audioFile 
   );
 });
 
-const QuestionItem = React.memo(function QuestionItem({
+// Simplified QuestionItem with optimized rendering
+const QuestionItem = memo(function QuestionItem({
   question,
   answers,
   feedback,
@@ -148,87 +207,65 @@ const QuestionItem = React.memo(function QuestionItem({
   onShowIndividualAnswer,
   seqStart
 }) {
-  // Memoize the question-specific data to avoid re-parsing on every render
-  const questionData = useMemo(() => {
-    // Extract only the data relevant to this specific question
-    const questionAnswers = {};
-    const questionFeedback = {};
-    
-    if (question.type === 'CLOZE' && question.blanks) {
-      question.blanks.forEach((_, bi) => {
-        const key = `${question.id}_${bi+1}`;
-        questionAnswers[key] = answers[key] || '';
-        questionFeedback[key] = feedback[key] || '';
-      });
-    } else {
-      questionAnswers[question.id] = answers[question.id] || '';
-      questionFeedback[question.id] = feedback[question.id] || '';
-    }
-    
-    return {
-      answers: questionAnswers,
-      feedback: questionFeedback,
-      individualFeedback: individualFeedback[question.id] || false
-    };
-  }, [question, answers, feedback, individualFeedback]);
+  const hasAudio = question.audioFile;
 
   return (
-    <div>
-      {/* Render audio player if question has audio */}
-      {question.audioFile && (
-        <BookmarkAudioPlayer audioFile={question.audioFile} />
-      )}
+    <div className="question-item">
+      {/* Conditionally render audio player */}
+      {hasAudio && <BookmarkAudioPlayer audioFile={question.audioFile} />}
       
-      {/* Render individual question */}
+      {/* Render the question */}
       <QuestionList
         questions={[question]}
-        answers={questionData.answers}
-        feedback={questionData.feedback}
+        answers={answers}
+        feedback={feedback}
         onChange={onChange}
         showFeedback={showFeedback}
         quizName="bookmarks"
         showAnkiButton={true}
-        individualFeedback={{ [question.id]: questionData.individualFeedback }}
+        individualFeedback={individualFeedback}
         onShowIndividualAnswer={onShowIndividualAnswer}
         seqStart={seqStart}
       />
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function - only re-render if this question's data changed
-  const qid = prevProps.question.id;
+  // Custom memo comparator - only re-render if relevant data changed
+  const { question } = prevProps;
+  const { id, type, blanks = [] } = question;
   
-  // Check if this question's answers changed
-  let answerChanged = false;
-  if (prevProps.question.type === 'CLOZE' && prevProps.question.blanks) {
-    answerChanged = prevProps.question.blanks.some((_, bi) => {
-      const key = `${qid}_${bi+1}`;
-      return prevProps.answers[key] !== nextProps.answers[key];
+  // Helper to check if a property changed
+  const propChanged = (prop) => prevProps[prop] !== nextProps[prop];
+  
+  // Check if question-specific data changed
+  let dataChanged = false;
+  
+  if (type === 'CLOZE' && blanks.length > 0) {
+    // For CLOZE questions, check each blank's answer and feedback
+    dataChanged = blanks.some((_, index) => {
+      const key = `${id}_${index + 1}`;
+      return (
+        prevProps.answers[key] !== nextProps.answers[key] ||
+        prevProps.feedback[key] !== nextProps.feedback[key]
+      );
     });
   } else {
-    answerChanged = prevProps.answers[qid] !== nextProps.answers[qid];
-  }
-  
-  // Check if this question's feedback changed
-  let feedbackChanged = false;
-  if (prevProps.question.type === 'CLOZE' && prevProps.question.blanks) {
-    feedbackChanged = prevProps.question.blanks.some((_, bi) => {
-      const key = `${qid}_${bi+1}`;
-      return prevProps.feedback[key] !== nextProps.feedback[key];
-    });
-  } else {
-    feedbackChanged = prevProps.feedback[qid] !== nextProps.feedback[qid];
+    // For other question types, check the main answer and feedback
+    dataChanged = (
+      prevProps.answers[id] !== nextProps.answers[id] ||
+      prevProps.feedback[id] !== nextProps.feedback[id]
+    );
   }
   
   // Check if other relevant props changed
   const otherPropsChanged = 
-    prevProps.showFeedback !== nextProps.showFeedback ||
-    prevProps.individualFeedback[qid] !== nextProps.individualFeedback[qid] ||
-    prevProps.question !== nextProps.question ||
-    prevProps.seqStart !== nextProps.seqStart;
+    propChanged('showFeedback') ||
+    propChanged('seqStart') ||
+    propChanged('question') ||
+    (prevProps.individualFeedback[id] !== nextProps.individualFeedback[id]);
   
-  // Only re-render if something actually changed for this question
-  const shouldRerender = answerChanged || feedbackChanged || otherPropsChanged;
+  // Only re-render if something actually changed
+  const shouldRerender = dataChanged || otherPropsChanged;
   
   // Return true to skip re-render, false to re-render
   return !shouldRerender;

@@ -1,3 +1,64 @@
+/* WaveSurfer styling for full-width responsive waveform */
+.wavesurfer-container {
+  width: 100% !important;
+  border-radius: 0.375rem;
+  overflow: hidden;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease-in-out;
+}
+
+.wavesurfer-container:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.dark .wavesurfer-container {
+  background: #1e293b;
+  border-color: #475569;
+}
+
+.wavesurfer-waveform {
+  cursor: pointer;
+  width: 100% !important;
+  min-height: 60px;
+}
+
+/* Ensure WaveSurfer canvas fills container */
+.wavesurfer-container wave,
+.wavesurfer-container canvas {
+  width: 100% !important;
+  display: block !important;
+}
+
+/* Custom waveform colors using CSS variables */
+:root {
+  --waveform-color: #3b82f6;
+  --progress-color: #1d4ed8;
+  --cursor-color: #ef4444;
+}
+
+/* Dark mode color overrides */
+.dark {
+  --waveform-color: #60a5fa;
+  --progress-color: #3b82f6;
+  --cursor-color: #f87171;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .wavesurfer-waveform {
+    min-height: 50px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .wavesurfer-waveform {
+    min-height: 45px !important;
+  }
+}
+
+/* Original audio contrast styles */
 .audio-contrast {
   background-color: #f8fafc;
   color: #1e293b;
