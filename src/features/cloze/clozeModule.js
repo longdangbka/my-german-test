@@ -13,10 +13,40 @@ import React from 'react';
 // ============================================================================
 
 // Single regex pattern used by all functions for any cloze markers
-export const CLOZE_RE = /\{\{c(\d+)::([^}]+)\}\}/g;
+// match {{c1::…}} non-greedily across lines
+export const CLOZE_RE = /\{\{c(\d+)::([\s\S]+?)\}\}/g;
 
 // Blank placeholder used for rendering
 const BLANK_PLACEHOLDER = '_____';
+
+// ============================================================================
+// NEW: extract LaTeX chunks and turn them into placeholders
+// so that backslashes, braces, subscripts, etc. never confuse our cloze regex
+// ============================================================================
+const LATEX_INLINE_RE  = /\$(?:\\.|[^\$\\])+\$/g;
+const LATEX_DISPLAY_RE = /\$\$[\s\S]+?\$\$/g;
+
+function extractLatexPlaceholders(text) {
+  const placeholders = [];
+  let idx = 0;
+
+  // first strip out display math
+  let t = text.replace(LATEX_DISPLAY_RE, m => {
+    const key = `__LATEX_${idx}__`;
+    placeholders.push({ placeholder: key, latex: m, latexType: 'display' });
+    idx++;
+    return key;
+  });
+  // then inline math
+  t = t.replace(LATEX_INLINE_RE, m => {
+    const key = `__LATEX_${idx}__`;
+    placeholders.push({ placeholder: key, latex: m, latexType: 'inline' });
+    idx++;
+    return key;
+  });
+
+  return { processedText: t, latexPlaceholders: placeholders };
+}
 
 /**
  * ClozeInfo interface for parsed cloze data
@@ -43,26 +73,29 @@ const BLANK_PLACEHOLDER = '_____';
  * Parse cloze text and return structured data for rendering
  * 
  * @param {string} text - The text containing cloze markers
- * @returns {ParsedCloze} Object with ids array and parts array for rendering
+ * @returns {Object} { ids, parts, latexPlaceholders }
  */
-export function parseClozes(text) {
-  if (!text || typeof text !== 'string') {
-    return { ids: [], parts: [text || ''] };
+export function parseClozes(originalText) {
+  if (!originalText || typeof originalText !== 'string') {
+    return { ids: [], parts: [originalText || ''], latexPlaceholders: [] };
   }
   
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(originalText);
+
   // Reset regex lastIndex to ensure consistent behavior
   CLOZE_RE.lastIndex = 0;
   
-  const clozes = Array.from(text.matchAll(CLOZE_RE), (m, index) => ({ 
-    id: +m[1], 
-    content: m[2],
+  const clozes = Array.from(processedText.matchAll(CLOZE_RE), m => ({
+    id: +m[1],
+    content: m[2],      // this content still has __LATEX_n__ placeholders in it
     fullMatch: m[0],
     start: m.index,
     end: m.index + m[0].length
   }));
   
   if (clozes.length === 0) {
-    return { ids: [], parts: [text] };
+    return { ids: [], parts: [processedText], latexPlaceholders };
   }
   
   // Extract unique IDs
@@ -75,7 +108,7 @@ export function parseClozes(text) {
   clozes.forEach(cloze => {
     // Add text before this cloze
     if (cloze.start > lastIndex) {
-      const textBefore = text.slice(lastIndex, cloze.start);
+      const textBefore = processedText.slice(lastIndex, cloze.start);
       if (textBefore) parts.push(textBefore);
     }
     
@@ -85,12 +118,12 @@ export function parseClozes(text) {
   });
   
   // Add remaining text after last cloze
-  if (lastIndex < text.length) {
-    const remainingText = text.slice(lastIndex);
+  if (lastIndex < processedText.length) {
+    const remainingText = processedText.slice(lastIndex);
     if (remainingText) parts.push(remainingText);
   }
   
-  return { ids, parts };
+  return { ids, parts, latexPlaceholders };
 }
 
 /**
@@ -102,7 +135,19 @@ export function parseClozes(text) {
 export function stripMarkers(text) {
   if (!text || typeof text !== 'string') return text || '';
   
-  return text.replace(CLOZE_RE, (_, id, content) => content);
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(text);
+  
+  // Strip cloze markers from processed text
+  const stripped = processedText.replace(CLOZE_RE, (_, id, content) => content);
+  
+  // STEP 2: restore LaTeX placeholders
+  let result = stripped;
+  latexPlaceholders.forEach(({ placeholder, latex }) => {
+    result = result.replace(placeholder, latex);
+  });
+  
+  return result;
 }
 
 /**
@@ -115,13 +160,25 @@ export function stripMarkers(text) {
 export function replaceWithBlanks(text, targetId = null) {
   if (!text || typeof text !== 'string') return text || '';
   
-  return text.replace(CLOZE_RE, (fullMatch, id, content) => {
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(text);
+  
+  // Replace cloze markers with blanks in processed text
+  const blanked = processedText.replace(CLOZE_RE, (fullMatch, id, content) => {
     const clozeId = +id;
     if (targetId === null || clozeId === targetId) {
       return BLANK_PLACEHOLDER;
     }
     return fullMatch; // Keep original if not targeting this ID
   });
+  
+  // STEP 2: restore LaTeX placeholders
+  let result = blanked;
+  latexPlaceholders.forEach(({ placeholder, latex }) => {
+    result = result.replace(placeholder, latex);
+  });
+  
+  return result;
 }
 
 // ============================================================================
@@ -188,23 +245,26 @@ export function renderWithInputs(parts, props) {
  * Groups clozes by ID and extracts unique content for each group
  * 
  * @param {string|Object} content - Text content or question object with rawText
- * @returns {string[]} Array of unique blank content strings
+ * @returns {Object} { blanks: string[], latexPlaceholders: array }
  */
 export function extractClozeBlanksByGroup(content) {
   const text = typeof content === 'string' ? content : (content?.rawText || content?.text || '');
-  if (!text) return [];
+  if (!text) return { blanks: [], latexPlaceholders: [] };
   
-  const { ids } = parseClozes(text);
+  const { ids, latexPlaceholders } = parseClozes(text);
   const blanksByGroup = new Map();
+  
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText } = extractLatexPlaceholders(text);
   
   // Reset regex for fresh scan
   CLOZE_RE.lastIndex = 0;
   
   // Find all clozes and group by ID
-  const matches = Array.from(text.matchAll(CLOZE_RE));
+  const matches = Array.from(processedText.matchAll(CLOZE_RE));
   matches.forEach(match => {
     const id = +match[1];
-    const content = match[2];
+    const content = match[2];  // this content has __LATEX_n__ placeholders in it
     
     if (!blanksByGroup.has(id)) {
       blanksByGroup.set(id, content);
@@ -212,7 +272,8 @@ export function extractClozeBlanksByGroup(content) {
   });
   
   // Return in ID order
-  return ids.map(id => blanksByGroup.get(id)).filter(Boolean);
+  const blanks = ids.map(id => blanksByGroup.get(id)).filter(Boolean);
+  return { blanks, latexPlaceholders };
 }
 
 /**
@@ -220,18 +281,23 @@ export function extractClozeBlanksByGroup(content) {
  * Each cloze marker becomes a separate blank, regardless of ID duplication
  * 
  * @param {string|Object} content - Text content or question object with rawText
- * @returns {string[]} Array of all blank content strings in order
+ * @returns {Object} { blanks: string[], latexPlaceholders: array }
  */
 export function extractAllClozeBlanks(content) {
   const text = typeof content === 'string' ? content : (content?.rawText || content?.text || '');
-  if (!text) return [];
+  if (!text) return { blanks: [], latexPlaceholders: [] };
+  
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(text);
   
   // Reset regex for fresh scan
   CLOZE_RE.lastIndex = 0;
   
   // Find all clozes in order and extract content
-  const matches = Array.from(text.matchAll(CLOZE_RE));
-  return matches.map(match => match[2]);
+  const matches = Array.from(processedText.matchAll(CLOZE_RE));
+  const blanks = matches.map(match => match[2]); // content with __LATEX_n__ placeholders
+  
+  return { blanks, latexPlaceholders };
 }
 
 // ============================================================================
@@ -248,10 +314,21 @@ export function extractAllClozeBlanks(content) {
 export function toSequentialBlanks(text) {
   if (!text || typeof text !== 'string') return text || '';
   
+  // STEP 1: pull out any LaTeX so it can't break our cloze‐regex
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(text);
+  
   let counter = 1;
-  return text.replace(CLOZE_RE, (fullMatch, id, content) => {
+  const sequential = processedText.replace(CLOZE_RE, (fullMatch, id, content) => {
     return `__CLOZE_${counter++}__`;
   });
+  
+  // STEP 2: restore LaTeX placeholders
+  let result = sequential;
+  latexPlaceholders.forEach(({ placeholder, latex }) => {
+    result = result.replace(placeholder, latex);
+  });
+  
+  return result;
 }
 
 /**
@@ -262,7 +339,10 @@ export function toSequentialBlanks(text) {
  */
 export function hasCloze(text) {
   if (!text || typeof text !== 'string') return false;
-  return CLOZE_RE.test(text);
+  
+  // Extract LaTeX first to avoid false positives
+  const { processedText } = extractLatexPlaceholders(text);
+  return CLOZE_RE.test(processedText);
 }
 
 /**
@@ -287,13 +367,31 @@ export function getClozeIds(text) {
 export function findCloze(text) {
   if (!text || typeof text !== 'string') return [];
   
+  // Extract LaTeX first to ensure proper cloze parsing
+  const { processedText, latexPlaceholders } = extractLatexPlaceholders(text);
+  
   CLOZE_RE.lastIndex = 0;
   
-  return Array.from(text.matchAll(CLOZE_RE), m => ({ 
+  const clozes = Array.from(processedText.matchAll(CLOZE_RE), m => ({ 
     id: +m[1], 
-    content: m[2],
+    content: m[2], // content with __LATEX_n__ placeholders
     fullMatch: m[0]
   }));
+  
+  // Restore LaTeX in content for legacy compatibility
+  return clozes.map(cloze => ({
+    ...cloze,
+    content: restoreLatexInText(cloze.content, latexPlaceholders)
+  }));
+}
+
+// Helper function for restoring LaTeX in text
+function restoreLatexInText(text, latexPlaceholders) {
+  let result = text;
+  latexPlaceholders.forEach(({ placeholder, latex }) => {
+    result = result.replace(placeholder, latex);
+  });
+  return result;
 }
 
 /**
@@ -369,7 +467,9 @@ export function ensureClozeQuestion(question) {
   // Ensure blanks array exists and is populated
   if (!question.blanks || question.blanks.length === 0) {
     const text = question.rawText || question.text || '';
-    question.blanks = extractAllClozeBlanks(text);
+    const { blanks, latexPlaceholders } = extractAllClozeBlanks(text);
+    question.blanks = blanks;
+    question.latexPlaceholders = latexPlaceholders;
   }
   
   return question;
@@ -444,13 +544,40 @@ export function ClozeBlank({
   const fieldName = `${question.id}_${blankIndex + 1}`;
   const userAnswer = value && value[fieldName];
   const isCorrect = feedback && feedback[fieldName] === 'correct';
-  const expectedAnswer = question.blanks && question.blanks[blankIndex];
+  let expectedAnswer = question.blanks && question.blanks[blankIndex];
+
+  // Helper function to restore LaTeX placeholders in text
+  const restoreLatexPlaceholders = (text) => {
+    if (!text || !question?.latexPlaceholders || question.latexPlaceholders.length === 0) {
+      return text;
+    }
+    
+    let processedText = text;
+    
+    // Replace LaTeX placeholders with their original LaTeX content
+    question.latexPlaceholders.forEach(({ placeholder, latex, latexType }) => {
+      if (processedText.includes(placeholder)) {
+        // The latex already includes the delimiters ($..$ or $$..$$)
+        processedText = processedText.replace(placeholder, latex);
+      }
+    });
+    
+    return processedText;
+  };
+
+  // Restore LaTeX placeholders in expected answer
+  if (expectedAnswer) {
+    expectedAnswer = restoreLatexPlaceholders(expectedAnswer);
+  }
 
   if (showFeedback) {
     const elements = [];
     
     // Always show user's answer if they provided one
     if (userAnswer) {
+      // Restore LaTeX placeholders in user answer for display
+      const displayUserAnswer = restoreLatexPlaceholders(userAnswer);
+      
       elements.push(React.createElement('span', {
         key: 'user-answer',
         className: `inline-block px-3 py-1 border rounded text-sm font-medium ${
@@ -458,7 +585,7 @@ export function ClozeBlank({
             ? 'bg-green-100 dark:bg-green-900/30 border-green-300 dark:border-green-600 text-green-800 dark:text-green-200'
             : 'bg-red-100 dark:bg-red-900/30 border-red-300 dark:border-red-600 text-red-800 dark:text-red-200'
         }`
-      }, renderLatex ? renderLatex(userAnswer) : userAnswer));
+      }, renderLatex ? renderLatex(displayUserAnswer) : displayUserAnswer));
       
       // Add feedback symbol after user answer
       elements.push(React.createElement('span', {

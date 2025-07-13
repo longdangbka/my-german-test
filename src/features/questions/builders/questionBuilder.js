@@ -79,7 +79,7 @@ export function buildQuestion({
       return buildAudioQuestion(baseQuestion, extras);
     
     case 'CLOZE':
-      return buildClozeQuestion(baseQuestion, rawQ, latexPlaceholders);
+      return buildClozeQuestion(baseQuestion, rawQ);
     
     case 'T-F':
     case 'SHORT':
@@ -108,10 +108,9 @@ function buildAudioQuestion(baseQuestion, extras) {
  * Builds a CLOZE question with proper blank extraction and processing
  * @param {Object} baseQuestion - Base question structure
  * @param {string} rawQ - Raw question text
- * @param {Array} latexPlaceholders - LaTeX placeholders
  * @returns {Object} CLOZE question
  */
-function buildClozeQuestion(baseQuestion, rawQ, latexPlaceholders) {
+function buildClozeQuestion(baseQuestion, rawQ) {
   if (DEBUG) console.log('🔍 QUESTION BUILDER - Processing CLOZE question. Raw Q:', rawQ);
   
   // Use centralized cloze utilities for consistent processing
@@ -119,14 +118,18 @@ function buildClozeQuestion(baseQuestion, rawQ, latexPlaceholders) {
   if (DEBUG) console.log('🔍 QUESTION BUILDER - Found cloze markers:', clozeData);
   
   // Extract blanks individually for proper form handling
-  let blanks = extractAllClozeBlanks(rawQ);
+  const { blanks, latexPlaceholders } = extractAllClozeBlanks(rawQ);
   if (DEBUG) console.log('🔍 QUESTION BUILDER - Extracted blanks:', blanks);
+
+  // Prepare the blanks and LaTeX data
+  let finalBlanks = blanks;
+  let finalLatexPlaceholders = latexPlaceholders;
 
   // Critical fix: If no blanks found but cloze markers exist, ensure we create blanks
   if (blanks.length === 0 && hasCloze(rawQ)) {
     if (DEBUG) console.warn('🚨 QUESTION BUILDER - Found cloze markers but no blanks extracted!');
-    blanks = clozeData.map(cloze => cloze.content);
-    if (DEBUG) console.log('🔍 QUESTION BUILDER - Fallback blanks:', blanks);
+    finalBlanks = clozeData.map(cloze => cloze.content);
+    if (DEBUG) console.log('🔍 QUESTION BUILDER - Fallback blanks:', finalBlanks);
   }
 
   // Use centralized replaceWithBlanks function for consistent display
@@ -138,19 +141,14 @@ function buildClozeQuestion(baseQuestion, rawQ, latexPlaceholders) {
     stripMarkers: false, 
     toSequential: true 
   });
-  
-  // Apply LaTeX restoration if needed
-  if (latexPlaceholders && latexPlaceholders.length > 0) {
-    ({ text, blanks } = restoreLatexInCloze(text, blanks, processedOrderedElements, latexPlaceholders));
-  }
 
   // Create the CLOZE question object
   let clozeQuestion = {
     ...baseQuestion,
     text,
-    blanks,
+    blanks: finalBlanks,
     orderedElements: processedOrderedElements,
-    latexPlaceholders: latexPlaceholders || [],
+    latexPlaceholders: finalLatexPlaceholders || [],
   };
 
   // Ensure the question has a valid blanks array using centralized function

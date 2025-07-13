@@ -11,7 +11,8 @@ const PATTERNS = {
   codeBlock: /```([\w-]*)\r?\n([\s\S]*?)```/g,
   table: /(^\|.+\|\r?\n\|[- :|]+\|\r?\n(?:\|.*\|\r?\n?)+)/gm,
   latexDisplay: /\$\$([\s\S]+?)\$\$/g,
-  latexInline: /\$([^$\n]+?)\$/g
+  latexInline: /\$([^$\n]+?)\$/g,
+  cloze: /\{\{c(\d+)::([^}]+)\}\}/g
 };
 
 /**
@@ -29,14 +30,12 @@ export function parseContentWithOrder(text, isCloze = false) {
     console.log('🔍 PARSE ORDER - Is cloze question:', isCloze);
   }
   
-  // For CLOZE questions, validate and process cloze markers first
+  // For CLOZE questions, validate but don't convert to blanks yet
+  // We need to preserve LaTeX content within cloze markers for proper rendering
   if (isCloze) {
     const validation = validateClozeText(text);
     if (DEBUG) console.log('🔍 PARSE ORDER - Cloze validation:', validation);
-    
-    // Convert cloze markers to sequential blanks before processing LaTeX
-    remaining = toSequentialBlanks(remaining);
-    if (DEBUG) console.log('🔍 PARSE ORDER - After cloze processing:', remaining);
+    if (DEBUG) console.log('🔍 PARSE ORDER - Preserving cloze markers with LaTeX for now');
   }
 
   const { matches, latexPlaceholders } = findAllMatches(remaining, isCloze);
@@ -79,20 +78,56 @@ function findAllMatches(text, isCloze) {
   const allMatches = [];
   const latexPlaceholders = { placeholders: [], index: 0 };
 
-  // Find all matches with their positions
-  Object.entries(PATTERNS).forEach(([type, regex]) => {
+  // For cloze questions, find cloze markers first to prioritize them
+  const clozeMatches = [];
+  if (isCloze) {
     let match;
-    const regexClone = new RegExp(regex.source, regex.flags);
-    while ((match = regexClone.exec(text)) !== null) {
-      allMatches.push({
-        type,
+    const clozeRegex = new RegExp(PATTERNS.cloze.source, PATTERNS.cloze.flags);
+    while ((match = clozeRegex.exec(text)) !== null) {
+      clozeMatches.push({
+        type: 'cloze',
         match,
         start: match.index,
         end: match.index + match[0].length,
         content: match[0]
       });
     }
+  }
+
+  // Find all other matches with their positions
+  Object.entries(PATTERNS).forEach(([type, regex]) => {
+    // Skip cloze pattern if already processed
+    if (isCloze && type === 'cloze') return;
+    
+    let match;
+    const regexClone = new RegExp(regex.source, regex.flags);
+    while ((match = regexClone.exec(text)) !== null) {
+      const matchData = {
+        type,
+        match,
+        start: match.index,
+        end: match.index + match[0].length,
+        content: match[0]
+      };
+      
+      // For cloze questions, check if this match is inside any cloze marker
+      if (isCloze) {
+        const isInsideCloze = clozeMatches.some(clozeMatch => 
+          matchData.start >= clozeMatch.start && matchData.end <= clozeMatch.end
+        );
+        if (!isInsideCloze) {
+          allMatches.push(matchData);
+        }
+      } else {
+        allMatches.push(matchData);
+      }
+    }
   });
+
+  // Add cloze matches for cloze questions
+  if (isCloze) {
+    allMatches.push(...clozeMatches);
+  }
 
   // Sort by position and remove overlapping matches
   allMatches.sort((a, b) => a.start !== b.start ? a.start - b.start : b.end - a.end);
@@ -139,6 +174,9 @@ function createElementFromMatch(type, match, content, isCloze, latexPlaceholders
     case 'latexInline':
       return handleLatexMatch(content, match[1], 'inline', isCloze, latexPlaceholders);
     
+    case 'cloze':
+      return handleClozeMatch(content, match, latexPlaceholders);
+    
     default:
       return { type: 'text', content };
   }
@@ -168,6 +206,66 @@ function handleLatexMatch(content, latex, latexType, isCloze, latexPlaceholders)
   } else {
     return { type: 'latex', content: { latex, latexType } };
   }
+}
+
+/**
+ * Handles cloze matches, processing LaTeX content within them
+ * @param {string} content - Full matched cloze content
+ * @param {Array} match - Regex match array [fullMatch, id, innerContent]
+ * @param {Object} latexPlaceholders - LaTeX placeholder tracker
+ * @returns {Object} Element object
+ */
+function handleClozeMatch(content, match, latexPlaceholders) {
+  const clozeId = match[1];
+  const innerContent = match[2];
+  
+  // Process LaTeX within the cloze content
+  const processedContent = processLatexInCloze(innerContent, latexPlaceholders);
+  
+  return { 
+    type: 'cloze', 
+    content: { 
+      id: clozeId, 
+      content: processedContent,
+      original: content
+    } 
+  };
+}
+
+/**
+ * Processes LaTeX content within cloze markers
+ * @param {string} content - Content inside cloze marker
+ * @param {Object} latexPlaceholders - LaTeX placeholder tracker
+ * @returns {string} Content with LaTeX converted to placeholders
+ */
+function processLatexInCloze(content, latexPlaceholders) {
+  // Process display LaTeX first (higher priority)
+  let processed = content.replace(PATTERNS.latexDisplay, (fullMatch, latex) => {
+    const placeholder = `__LATEX_DISPLAY_${latexPlaceholders.index}__`;
+    latexPlaceholders.placeholders.push({ 
+      placeholder, 
+      original: fullMatch, 
+      latex, 
+      latexType: 'display' 
+    });
+    latexPlaceholders.index++;
+    return placeholder;
+  });
+  
+  // Process inline LaTeX
+  processed = processed.replace(PATTERNS.latexInline, (fullMatch, latex) => {
+    const placeholder = `__LATEX_INLINE_${latexPlaceholders.index}__`;
+    latexPlaceholders.placeholders.push({ 
+      placeholder, 
+      original: fullMatch, 
+      latex, 
+      latexType: 'inline' 
+    });
+    latexPlaceholders.index++;
+    return placeholder;
+  });
+  
+  return processed;
 }
 
 /**
@@ -210,6 +308,12 @@ export function extractContentElements(text, isCloze = false) {
       break;
     case 'latex':
       latexBlocks.push(element.content);
+      break;
+    case 'cloze':
+      // For cloze elements, reconstruct them with the processed LaTeX content
+      const clozeContent = element.content;
+      const reconstructedCloze = `{{c${clozeContent.id}::${clozeContent.content}}}`;
+      cleanedText += reconstructedCloze + ' ';
       break;
     default:
       // Unknown element type, skip

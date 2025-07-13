@@ -14,6 +14,33 @@ import {
 } from '../../cloze/clozeModule';
 
 /**
+ * Helper function to render text while restoring LaTeX placeholders
+ * @param {string} text - Text that may contain LaTeX placeholders
+ * @param {Object} question - Question object with latexPlaceholders array
+ * @returns {*} - Rendered content with LaTeX restored
+ */
+function renderTextWithLatexPlaceholders(text, question) {
+  if (!text) return '';
+  
+  // If no LaTeX placeholders, just render normally
+  if (!question?.latexPlaceholders || question.latexPlaceholders.length === 0) {
+    return renderSimpleLatex(text);
+  }
+  
+  let processedText = text;
+  
+  // Replace LaTeX placeholders with their original LaTeX content
+  question.latexPlaceholders.forEach(({ placeholder, latex, latexType }) => {
+    if (processedText.includes(placeholder)) {
+      const latexDelimiters = latexType === 'display' ? `$$${latex}$$` : `$${latex}$`;
+      processedText = processedText.replace(placeholder, latexDelimiters);
+    }
+  });
+  
+  return renderSimpleLatex(processedText);
+}
+
+/**
  * Component to render inline cloze text with input fields or feedback.
  * Handles the conversion of text with cloze markers to interactive elements.
  * 
@@ -57,7 +84,7 @@ export function InlineClozeText({
   if (!hasBlankPlaceholders && !hasIdAwareBlanks && clozes.length === 0) {
     return (
       <span style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}>
-        {renderSimpleLatex(text)}
+        {renderTextWithLatexPlaceholders(text, question)}
       </span>
     );
   }
@@ -85,7 +112,7 @@ export function InlineClozeText({
     // Add text before this cloze marker
     if (clozeStartIndex > lastIndex) {
       const beforeText = text.slice(lastIndex, clozeStartIndex);
-      result.push(renderSimpleLatex(beforeText));
+      result.push(renderTextWithLatexPlaceholders(beforeText, question));
     }
     
     // Only render an input field if we haven't rendered one for this cloze ID yet
@@ -121,7 +148,7 @@ export function InlineClozeText({
   // Add remaining text after the last cloze
   if (lastIndex < text.length) {
     const remainingText = text.slice(lastIndex);
-    result.push(renderSimpleLatex(remainingText));
+    result.push(renderTextWithLatexPlaceholders(remainingText, question));
   }
 
   return (
@@ -157,11 +184,11 @@ function renderTextWithBlankPlaceholders(text, question, value, onChange, showFe
       const matchStart = match.index;
       const matchEnd = matchStart + match[0].length;
       
-      // Add text before this blank
+      // Add text before this blank with LaTeX rendering and placeholder restoration
       if (matchStart > lastIndex) {
         const beforeText = text.slice(lastIndex, matchStart);
         if (beforeText) {
-          result.push(renderSimpleLatex(beforeText));
+          result.push(renderTextWithLatexPlaceholders(beforeText, question));
         }
       }
       
@@ -218,7 +245,7 @@ function renderTextWithBlankPlaceholders(text, question, value, onChange, showFe
       const remainingText = text.slice(lastIndex);
       if (remainingText) {
         console.log('🔍 ID-AWARE BLANK - Adding remaining text:', remainingText);
-        result.push(renderSimpleLatex(remainingText));
+        result.push(renderTextWithLatexPlaceholders(remainingText, question));
       }
     }
     
@@ -240,9 +267,9 @@ function renderTextWithBlankPlaceholders(text, question, value, onChange, showFe
     console.log('🔍 REGULAR BLANKS - Sections:', blankSections.length, 'Question blanks:', question?.blanks?.length || 0);
     
     for (let i = 0; i < blankSections.length; i++) {
-      // Add text section with LaTeX rendering
+      // Add text section with LaTeX rendering and placeholder restoration
       if (blankSections[i]) {
-        result.push(renderSimpleLatex(blankSections[i]));
+        result.push(renderTextWithLatexPlaceholders(blankSections[i], question));
       }
       
       // Add input field if there's a blank after this section

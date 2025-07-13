@@ -1,10 +1,11 @@
 {
   "files": [
+    "bookmarks.md",
+    "Media-Test.md",
     "Question-Sample - 2.md",
-    "Question-Sample.md",
-    "test-content-rendering.md"
+    "Question-Sample.md"
   ],
   "description": "Available quiz files",
-  "lastUpdated": "2025-07-05",
+  "lastUpdated": "2025-07-12",
   "generatedBy": "auto-generate-manifest.js"
 }

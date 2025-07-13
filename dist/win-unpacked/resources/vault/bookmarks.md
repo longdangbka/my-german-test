@@ -2,7 +2,7 @@
 
 ### Questions
 
---- start-question
+````ad-question
 TYPE: T-F
 ID: qXXYYx51asdasasd_1_t-f_155ub6
 
@@ -150,9 +150,9 @@ $x=5$
 }
 ```
 
---- end-question
+````
 
---- start-question
+````ad-question
 TYPE: SHORT
 ID: qREFRESHTEST_1_short_1wvt8j
 
@@ -167,9 +167,9 @@ $y=5$
 
 A: Einstein
 
---- end-question
+````
 
---- start-question
+````ad-question
 TYPE: T-F
 ID: qREFRESHTEST_4_t-f_u8b6y8
 
@@ -257,9 +257,9 @@ $x=5$
 }
 ```
 
---- end-question
+````
 
---- start-question
+````ad-question
 TYPE: CLOZE
 ID: qSECONDSECTION2TEST_2_cloze_d16756
 
@@ -288,4 +288,4 @@ E:
 ausmachen = to turn off
 turn off = ausmachen
 
---- end-question
+````
