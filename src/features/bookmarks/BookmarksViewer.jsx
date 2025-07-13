@@ -533,13 +533,17 @@ const BookmarksViewer = ({ onBack }) => {
           console.log(`🔖 BOOKMARK PARSER - Generated fallback ID: ${question.id}`);
         }
         
-        if (question.text) {
-          console.log(`🔖 BOOKMARK PARSER - Adding question with ID: ${question.id}`);
+        // Include question if it has text content OR has ordered elements (LaTeX, images, etc.)
+        const hasContent = question.text || 
+                          (question.orderedElements && question.orderedElements.length > 0) ||
+                          question.answer ||
+                          question.explanation;
+        
+        if (hasContent) {
           questions.push(question);
         }
     });
     
-    console.log(`🔖 BOOKMARK PARSER - Parsed ${questions.length} bookmarks`);
     return questions;
   };
 
