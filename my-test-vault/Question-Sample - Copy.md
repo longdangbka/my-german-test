@@ -8,6 +8,21 @@ AUDIO: ![[audio1_1.mp3]]
 
 ````ad-question
 TYPE: Short
+ID: qREFRESHTEST_1_short_pxvliu
+
+Q: 
+asdasdasd
+$x=5$
+
+
+$y=5$
+
+A: $y=5$
+--- end-question
+
+
+````ad-question
+TYPE: Short
 ID: qREFRESHTEST_1_short_ao3g6m
 
 Q: 
@@ -17,8 +32,8 @@ $x=5$
 
 $y=5$
 
-A: Einstein
-````
+A: $y=5$
+--- end-question
 
 ````ad-question
 TYPE: Short
@@ -28,7 +43,7 @@ Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
 
 A: Einstein
 
-````
+--- end-question
 
 ````ad-question
 TYPE: T-F
@@ -38,7 +53,95 @@ Q: The equation $F = ma$ describes Newton's second law of motion. True or false?
 
 A: True
 
-````
+--- end-question
+
+````ad-question
+TYPE: T-F
+ID: qREFRESH TEST_3_t-f_7kphq2
+
+Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ 32156
+
+$y=5$
+$x=8$
+
+asdasdasdasd
+
+asdasd
+
+asdasdasdaaaaaaa asdasdas
+
+![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
+
+```jsx
+// In your component
+return (
+  <div className="upload-wrapper">
+    <label htmlFor={`upload-${group.title}`} className="btn">
+      {src ? 'Change Audio' : 'Upload Audio'}
+    </label>
+    <input
+      id={`upload-${group.title}`}
+      type="file"
+      accept="audio/*"
+      onChange={handleUpload}
+    />
+  </div>
+);
+
+
+```
+
+| $E = mc^2$   | b   |
+| --- | --- |
+| 1   | 2   |
+
+A: R
+E: "Sie können aber auch bei unserer Kollegin, Frau Dr. Elke Riedel, einen Termin vereinbaren."
+
+$x=5$
+```css
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+--- end-question
+
 
 ## SECOND SECTION TEST
 
@@ -81,7 +184,7 @@ Die Führung im Schloss wird nur auf Deutsch angeboten 2.
 
 A: F
 E: "Die Führung ist auf Deutsch und Englisch."
-````
+--- end-question
 
 ````ad-question
 TYPE: Cloze
@@ -109,7 +212,7 @@ E:
 ausmachen = to turn off
 turn off = ausmachen
 
-````
+--- end-question
 
 ````ad-question
 TYPE: Cloze
@@ -126,6 +229,18 @@ Q:
 E:
 ausmachen = to turn off
 turn off = ausmachen
+
+--- end-question
+
+````ad-question  
+TYPE: Cloze  
+
+Q:  
+Naive Bayes {{c1::test}} that features are conditionally independent given the class label.
+
+E:  
+
+asdasdasd
 
 ````
 

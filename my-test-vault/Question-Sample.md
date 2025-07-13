@@ -8,6 +8,19 @@ AUDIO: ![[audio1_1.mp3]]
 
 ````ad-question
 TYPE: Short
+ID: qREFRESHTEST_1_short_3ywitt
+
+Q:
+$x=5$
+
+
+$y=5$
+
+A: $y=5$
+````
+
+````ad-question
+TYPE: Short
 ID: qREFRESHTEST_1_short_ao3g6m
 
 Q: 
@@ -17,7 +30,7 @@ $x=5$
 
 $y=5$
 
-A: Einstein
+A: $y=5$
 ````
 
 ````ad-question
@@ -216,6 +229,42 @@ ausmachen = to turn off
 turn off = ausmachen
 
 ````
+
+
+````ad-question
+TYPE: CLOZE
+ID: qSECONDSECTIONTEST_4_cloze_nb123x
+
+Q:  
+Naive Bayes {{c1::assumes}} that features are conditionally independent given the class label.
+
+A: assumes
+
+E:  
+
+| Method        | Key Assumption                                    |
+| ------------- | ------------------------------------------------- |
+| Naive Bayes   | Conditional independence of features given class |  
+
+````
+
+````ad-question
+TYPE: CLOZE
+ID: qSECONDSECTIONTEST_5_cloze_m19f2c
+
+Q:  
+Naive Bayes {{c1::as}} that features are conditionally independent given the class label.
+
+A: assumes
+
+E:  
+
+| Method        | Key Assumption                                    |
+| ------------- | ------------------------------------------------- |
+| Naive Bayes   | Conditional independence of features given class |  
+
+````
+
 
 ## AUDIO ONLY TEST SECTION
 

@@ -1,10 +1,11 @@
-## XXYY $x=5+1$ asdasasd
+## Bookmarks
 
 ### Questions
 
-````ad-question
+--- start-question
 TYPE: T-F
-ID: qXXYY $x=5+1$ asdasasd_1_t-f_61nf2k
+ID: qXXYYx51asdasasd_1_t-f_155ub6
+
 
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ asdasdasdasd
 ![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
@@ -102,8 +103,9 @@ test_with_random_integers()
 | --- | --- |
 | 1   | 2   |
 
+
 A: R
-E: "Sie können aber auch bei unserer Kollegin, Frau Dr. Elke Riedel, einen Termin vereinbaren."
+E:  "Sie können aber auch bei unserer Kollegin, Frau Dr. Elke Riedel, einen Termin vereinbaren."
 
 $x=5$
 
@@ -148,56 +150,120 @@ $x=5$
 }
 ```
 
-````
+--- end-question
 
+--- start-question
+TYPE: SHORT
+ID: qREFRESHTEST_1_short_1wvt8j
 
-## SECOND SECTION 2 TEST
-
-```
 AUDIO: ![[audio1_1.mp3]]
+
+Q: Who invented the famous equation $E = mc^2$ that relates energy?
+$x=5$
+
+
+$y=5$
+
+
+A: Einstein
+
+--- end-question
+
+--- start-question
+TYPE: T-F
+ID: qREFRESHTEST_4_t-f_u8b6y8
+
+AUDIO: ![[audio1_1.mp3]]
+
+Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ 32156
+
+$y=5$
+$x=8$
+
+asdasdasdasd
+
+asdasd
+
+asdasdasdaaaaaaa asdasdas
+
+![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
+
+```jsx
+// In your component
+return (
+  <div className="upload-wrapper">
+    <label htmlFor={`upload-${group.title}`} className="btn">
+      {src ? 'Change Audio' : 'Upload Audio'}
+    </label>
+    <input
+      id={`upload-${group.title}`}
+      type="file"
+      accept="audio/*"
+      onChange={handleUpload}
+    />
+  </div>
+);
+
+
 ```
 
-### Transcript
-
-Liebe Besucherinnen und Besucher,
-
-der Rundgang durch das Schloss beginnt in 20 Minuten.
-
-Die Führung ist auf Deutsch und Englisch.
-
-Der Rundgang beginnt im Erdgeschoss am Eingang,
-
-geht durch alle Räume in allen Stockwerken und endet im dritten Stock.
-
-Dort können Sie in der Cafeteria etwas trinken und unseren Souvenirshop besuchen.
-
-Machen Sie bitte während der Führung Handys und Smartphones aus oder stellen Sie sie auf lautlos.
-
-### Questions
-
-````ad-question
-TYPE: T-F
-ID: qSECOND SECTION 2 TEST_1_t-f_ig9n0l
-
-Q: 
-
-| a   | $b+5$   |
+| $E = mc^2$   | b   |
 | --- | --- |
 | 1   | 2   |
 
 
-Die Führung im Schloss wird nur auf Deutsch angeboten.
+A: R
+E:  "Sie können aber auch bei unserer Kollegin, Frau Dr. Elke Riedel, einen Termin vereinbaren."
 
-Die Führung im Schloss wird nur auf Deutsch angeboten 2.
+$x=5$
+```css
+.App {
+  text-align: center;
+}
 
-A: F
-E: "Die Führung ist auf Deutsch und Englisch."
-````
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
 
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
 
-````ad-question
-TYPE: Cloze
-ID: qSECOND SECTION 2 TEST_2_cloze_lfhxm3
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+```
+
+--- end-question
+
+--- start-question
+TYPE: CLOZE
+ID: qSECONDSECTION2TEST_2_cloze_d16756
+
+AUDIO: ![[audio1_1.mp3]]
 
 Q: {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
 
@@ -213,7 +279,8 @@ $y=5_{1}$
 
 
 
-E: 
+
+E:  
 | $a^2$  | b  |
 | --- | --- |
 | 1   | 2   |
@@ -221,4 +288,4 @@ E:
 ausmachen = to turn off
 turn off = ausmachen
 
-````
+--- end-question

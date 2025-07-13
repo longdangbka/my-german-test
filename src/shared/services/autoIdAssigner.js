@@ -49,16 +49,16 @@ export class AutoIdAssigner {
         
         const questionsSection = qMatch[1];
         
-        // Find question blocks - more robust regex that handles various formatting
+        // Find question blocks - supports both old and new formats
         const questionBlocks = Array.from(
-          questionsSection.matchAll(/--- start-question\s*[\r\n]+([\s\S]*?)[\r\n]+--- end-question/g)
+          questionsSection.matchAll(/(?:--- start-question\s*[\r\n]+([\s\S]*?)[\r\n]+--- end-question|````ad-question\s*[\r\n]+([\s\S]*?)[\r\n]+````)/g)
         );
         
         console.log(`🆔 AUTO-ID - Found ${questionBlocks.length} questions in group: ${groupNumber}`);
 
         for (let [idx, match] of questionBlocks.entries()) {
           const fullMatch = match[0]; // Complete match including delimiters
-          const questionCode = match[1].trim();
+          const questionCode = (match[1] || match[2]).trim(); // m[1] for old format, m[2] for new format
           
           // Check if ID already exists
           const existingId = extractQuestionId(questionCode);
@@ -75,7 +75,7 @@ export class AutoIdAssigner {
           if (type === 'TRUEFALSE') type = 'T-F';
           if (type === 'SHORT') type = 'Short';
           
-          const qMatch = questionCode.match(/^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|ANSWER:|E:|---\s*end-question|$))/m);
+          const qMatch = questionCode.match(/^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|ANSWER:|E:|---\s*end-question|````$))/m);
           let questionText = qMatch ? qMatch[1].replace(/^\r?\n/, '').trim() : '';
           
           // Handle audio-only questions that don't have TYPE or Q fields

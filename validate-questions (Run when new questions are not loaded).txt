@@ -1,0 +1,12 @@
+If questions don't appear, run these in your terminal
+
+cd "C:\Users\HOANG PHI LONG DANG\REACT CODE\App\my-german-test"
+
+# Validate questions
+node validate-questions.js
+
+# Count questions in file
+Select-String -Path "my-test-vault\Question-Sample.md" -Pattern "--- start-question" | Measure-Object | Select-Object Count
+
+# Check for duplicate IDs
+Select-String -Path "my-test-vault\Question-Sample.md" -Pattern "^ID:" | Group-Object Line | Where-Object Count -gt 1

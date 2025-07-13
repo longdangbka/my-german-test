@@ -1,5 +1,9 @@
 ## XXYY $x=5+1$ asdasasd
 
+```
+AUDIO: ![[audio1_3.mp3]]
+```
+
 ### Questions
 
 ````ad-question
@@ -8,6 +12,8 @@ ID: qXXYY $x=5+1$ asdasasd_1_t-f_61nf2k
 
 Q: Frau Dr. Elke Riedel ist eine Kollegin von Dr. Nowak. $x=5$ asdasdasdasd
 ![[a282db8dc65a5a98beb88413d7f1d57d549d65882c3e5d4e2250c39dd1953480e22d3d864280d3600dc36b5495d860da4a627cd1991450ea92e721eccfe045f2.jpg]]
+
+![[windows photo viewer wallpaper.jpg]]
 
 ```python
 import random
@@ -221,4 +227,19 @@ E:
 ausmachen = to turn off
 turn off = ausmachen
 
+````
+
+````ad-question
+TYPE: T-F
+ID: qSECONDSECTION2TEST_3_t-f_gs40ql
+
+Q: 
+
+
+Die Führung im Schloss wird nur auf Deutsch angeboten.
+
+Die Führung im Schloss wird nur auf Deutsch angeboten 2.
+
+A: F
+E: "Die Führung ist auf Deutsch und Englisch."
 ````

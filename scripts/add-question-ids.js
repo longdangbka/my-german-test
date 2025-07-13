@@ -74,13 +74,13 @@ function addIdsToMarkdownFile(filePath) {
     
     const questionsSection = qMatch[1];
     
-    // Find question blocks
+    // Find question blocks - supports both old and new formats
     const questionBlocks = Array.from(
-      questionsSection.matchAll(/--- start-question[\r\n]+([\s\S]*?)[\r\n]+--- end-question/g)
+      questionsSection.matchAll(/(?:--- start-question[\r\n]+([\s\S]*?)[\r\n]+--- end-question|````ad-question[\r\n]+([\s\S]*?)[\r\n]+````)/g)
     );
     
     for (let [idx, match] of questionBlocks.entries()) {
-      const questionCode = match[1].trim();
+      const questionCode = (match[1] || match[2]).trim(); // m[1] for old format, m[2] for new format
       
       // Check if ID already exists
       if (questionCode.match(/^ID:\s*.+$/m)) {
@@ -92,7 +92,7 @@ function addIdsToMarkdownFile(filePath) {
       const typeM = questionCode.match(/^TYPE:\s*(CLOZE|T-F|Short)$/im);
       const type = typeM ? typeM[1].toUpperCase() : 'UNKNOWN';
       
-      const qMatch = questionCode.match(/^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|E:|---\s*end-question))/m);
+      const qMatch = questionCode.match(/^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|E:|---\s*end-question|````$))/m);
       const questionText = qMatch ? qMatch[1].replace(/^\r?\n/, '').trim() : '';
       
       if (type === 'UNKNOWN' || !questionText) {

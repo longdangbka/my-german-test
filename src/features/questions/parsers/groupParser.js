@@ -15,11 +15,13 @@ const DEBUG = process.env.NODE_ENV === 'development';
 const HEADING_REGEX = /^##\s+(.+)$/gm;
 const TRANSCRIPT_REGEX = /### Transcript\s*[\r\n]+([\s\S]*?)(?=### Questions|$)/i;
 const QUESTIONS_REGEX = /### Questions\s*[\r\n]+([\s\S]*)/i;
-const QUESTION_BLOCK_REGEX = /--- start-question[\r\n]+([\s\S]*?)[\r\n]+--- end-question/g;
+// Updated to support both old and new question block formats
+const QUESTION_BLOCK_REGEX = /(?:--- start-question[\r\n]+([\s\S]*?)[\r\n]+--- end-question|````ad-question[\r\n]+([\s\S]*?)[\r\n]+````)/g;
 const AUDIO_BLOCK_REGEX = /```[\s\S]*?AUDIO:\s*([\s\S]*?)```/im;
 const AUDIO_FILE_REGEX = /!\[\[([^\]]+\.(mp3|wav|m4a|ogg|flac))\]\]/i;
 const TYPE_REGEX = /^TYPE:\s*(CLOZE|T-F|Short)$/im;
-const QUESTION_TEXT_REGEX = /^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|E:|---\s*end-question))/m;
+// Updated to support both old and new question end patterns
+const QUESTION_TEXT_REGEX = /^Q:\s*([\s\S]*?)(?=\r?\n(?:A:|E:|---\s*end-question|````$))/m;
 const ANSWER_REGEX = /^A:\s*([\s\S]*?)$/im;
 const EXPLANATION_START_REGEX = /^E:/m;
 const AUDIO_SIMPLE_REGEX = /^AUDIO:\s*$/im;
@@ -151,7 +153,7 @@ function extractAndParseQuestions(block, num, audioInfo) {
 
   const codeBlocks = Array.from(
     questionsSection.matchAll(QUESTION_BLOCK_REGEX),
-    m => m[1].trim()
+    m => (m[1] || m[2]).trim() // m[1] for old format, m[2] for new format
   );
 
   const questions = codeBlocks.map((code, idx) => 
@@ -314,7 +316,19 @@ function extractExplanationContent(code) {
   }
 
   const eStart = code.indexOf('E:', eIdx) + 2;
-  const eEnd = code.indexOf('--- end-question', eStart);
+  // Check for both old and new end patterns
+  const oldEnd = code.indexOf('--- end-question', eStart);
+  const newEnd = code.indexOf('````', eStart);
+  let eEnd = -1;
+  
+  // Use whichever end pattern is found (and comes first if both exist)
+  if (oldEnd !== -1 && newEnd !== -1) {
+    eEnd = Math.min(oldEnd, newEnd);
+  } else if (oldEnd !== -1) {
+    eEnd = oldEnd;
+  } else if (newEnd !== -1) {
+    eEnd = newEnd;
+  }
   
   let rawE;
   if (eEnd !== -1) {

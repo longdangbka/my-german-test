@@ -61,12 +61,23 @@ const BookmarkButton = ({ question, quizName, questionIndex, groupAudio = null }
           // Remove bookmark - find and remove the question block with matching ID
           console.log(`🔖 Removing bookmark for ID: ${questionId}`);
           
-          const questionBlocks = bookmarksContent.split('--- start-question');
+          // Support both old and new formats
+          let questionBlocks = [];
+          let isNewFormat = bookmarksContent.includes('````ad-question');
+          
+          if (isNewFormat) {
+            questionBlocks = bookmarksContent.split('````ad-question');
+          } else {
+            questionBlocks = bookmarksContent.split('--- start-question');
+          }
+          
           const filteredBlocks = questionBlocks.filter((block, index) => {
             if (index === 0) return true; // Keep the header
             
             // Check if this block contains our question ID
-            const blockContent = '--- start-question' + block;
+            const blockContent = isNewFormat ? 
+              '````ad-question' + block : 
+              '--- start-question' + block;
             const hasMatchingId = idPattern.test(blockContent);
             
             if (hasMatchingId) {
@@ -76,7 +87,9 @@ const BookmarkButton = ({ question, quizName, questionIndex, groupAudio = null }
             return !hasMatchingId;
           });
           
-          bookmarksContent = filteredBlocks.join('--- start-question');
+          bookmarksContent = isNewFormat ? 
+            filteredBlocks.join('````ad-question') : 
+            filteredBlocks.join('--- start-question');
           
           // Clean up any empty sections
           if (filteredBlocks.length <= 1) {
@@ -112,10 +125,10 @@ const BookmarkButton = ({ question, quizName, questionIndex, groupAudio = null }
             console.log(`🔖 Found audio file in group: ${audioFile}`);
           }
 
-          // Add bookmark - format as standard quiz question with ID
+          // Add bookmark - format as standard quiz question with ID using new format
           // Use rawText to preserve any formatting including cloze syntax for storage
           let bookmarkEntry = `
---- start-question
+````ad-question
 TYPE: ${question.type || 'T-F'}
 ID: ${questionId}
 `;
@@ -143,7 +156,7 @@ E: ${question.rawExplanation || question.explanation}`;
 
           bookmarkEntry += `
 
---- end-question
+````
 `;
 
           // If this is the first bookmark, create the header

@@ -8,7 +8,7 @@ AUDIO: ![[audio1_1.mp3]]
 
 ````ad-question
 TYPE: Short
-ID: qREFRESHTEST_1_short_ao3g6m
+ID: qREFRESHTEST_1_short_8c0cl6
 
 Q: 
 Who invented the famous equation $E = mc^2$ that relates energy?
@@ -22,7 +22,7 @@ A: Einstein
 
 ````ad-question
 TYPE: Short
-ID: qREFRESH TEST_1_short_n1i1uk
+ID: qREFRESHTEST_2_short_hgm1ip
 
 Q: Who invented the famous equation $E = mc^2$ that relates energy and mass?
 
@@ -66,7 +66,7 @@ Machen Sie bitte während der Führung Handys und Smartphones aus oder stellen S
 
 ````ad-question
 TYPE: T-F
-ID: qSECOND SECTION TEST_1_t-f_qj94ip
+ID: qSECONDSECTIONTEST_1_t-f_cibdr6
 
 Q: 
 
@@ -85,7 +85,7 @@ E: "Die Führung ist auf Deutsch und Englisch."
 
 ````ad-question
 TYPE: Cloze
-ID: qSECOND SECTION TEST_2_cloze_lfhxm3
+ID: qSECONDSECTIONTEST_2_cloze_nb661i
 
 Q: 
 {{c1::Machen $x=1$}} Sie bitte während der Führung Handys und Smartphones.
@@ -135,7 +135,7 @@ turn off = ausmachen
 
 ````ad-question
 TYPE: T-F
-ID: qAUDIO ONLY TEST SECTION_2_t-f_okfm91
+ID: qAUDIOONLYTESTSECTION_1_t-f_cye7sj
 
 Q: This is a test question in the audio-only section.
 

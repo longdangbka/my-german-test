@@ -286,15 +286,27 @@ const BookmarksViewer = ({ onBack }) => {
   const parseBookmarksFile = (content) => {
     const questions = [];
     
-    // Split by question blocks (--- start-question ... --- end-question)
-    const questionBlocks = content.split('--- start-question').filter(block => block.trim());
+    // Split by question blocks - support both old and new formats
+    let questionBlocks = [];
     
-    questionBlocks.forEach((block, index) => {
-      const parts = block.split('--- end-question');
-      if (parts.length >= 2) {
-        const questionContent = parts[0].trim();
-        const metadata = parts[1].trim();
-        
+    // Try new format first
+    if (content.includes('````ad-question')) {
+      questionBlocks = content.split('````ad-question').filter(block => block.trim());
+      // For new format, we need to handle the end differently
+      questionBlocks = questionBlocks.map(block => {
+        const parts = block.split('````');
+        return parts.length >= 2 ? parts[0].trim() : block.trim();
+      }).filter(block => block);
+    } else {
+      // Fall back to old format
+      questionBlocks = content.split('--- start-question').filter(block => block.trim());
+      questionBlocks = questionBlocks.map(block => {
+        const parts = block.split('--- end-question');
+        return parts.length >= 2 ? parts[0].trim() : block.trim();
+      }).filter(block => block);
+    }
+    
+    questionBlocks.forEach((questionContent, index) => {
         // Parse question content
         const lines = questionContent.split('\n'); // Don't filter out empty lines yet
         const question = {
@@ -513,16 +525,6 @@ const BookmarksViewer = ({ onBack }) => {
           question.explanation = '';
         }
         
-        // Parse metadata for unique ID
-        const metadataLines = metadata.split('\n');
-        metadataLines.forEach(line => {
-          if (line.startsWith('id:')) {
-            question.originalId = line.substring(3).trim();
-          } else if (line.startsWith('quiz:')) {
-            question.quiz = line.substring(5).trim();
-          }
-        });
-        
         // Ensure question has an ID - generate fallback if needed
         if (!question.id) {
           // Generate a fallback ID based on content hash and index
@@ -535,7 +537,6 @@ const BookmarksViewer = ({ onBack }) => {
           console.log(`🔖 BOOKMARK PARSER - Adding question with ID: ${question.id}`);
           questions.push(question);
         }
-      }
     });
     
     console.log(`🔖 BOOKMARK PARSER - Parsed ${questions.length} bookmarks`);
